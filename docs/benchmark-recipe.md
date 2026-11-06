@@ -44,6 +44,19 @@ LLM costs some memory and CPU itself, so compare LLM runs with LLM runs, never w
 
 For allocation-level detail (call stacks, what grew between two moments), record a trace with `-trace=default,memory` and open it in Unreal Insights. Soundings doesn't read traces.
 
+## Capturing without touching the keyboard
+
+For runs that should match each other closely, let the engine take the captures at fixed frames and then quit. The CSV profiler can run console commands at a given frame number, and capping the frame rate turns frame numbers into rough times:
+
+```sh
+UnrealEditor MyGame.uproject -game -windowed -resx=1280 -resy=720 \
+  -llmcsv -ExecCmds="t.MaxFPS 30" \
+  -csvCaptureFrames=2100 -ExitAfterCsvProfiling \
+  -csvExecCmds="900:memreport -full,1800:memreport -full"
+```
+
+At 30 frames a second, that takes a memreport about 30 and 60 seconds in, then quits at about 70 seconds. On macOS the editor binary is inside `UnrealEditor.app/Contents/MacOS/`. Running with `-game` from the editor binary loads uncooked content, so absolute numbers are higher than a cooked build's; compare runs made the same way.
+
 ## Reading the results
 
 ```sh

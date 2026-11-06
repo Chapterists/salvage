@@ -12,6 +12,7 @@ use salvage::probe::Probe;
 use salvage::probe::SystemProbe;
 use salvage::project::Project;
 use salvage::soundings::{self, Sounding};
+use salvage::trim;
 use salvage::ui::{self, BAD, BOLD, DIM, GOOD, WARN, paint};
 
 /// `0.1.0 (1a2b3c4d5e6f)`: the crate version and the commit it was built from.
@@ -100,6 +101,31 @@ enum Command {
     #[command(subcommand)]
     Lldb(LldbCommand),
 
+    /// Write memory tiers for 8, 12 and 16 GB machines into a project's config.
+    ///
+    /// Adds marked blocks to the project's Config files (backing each file up
+    /// first) with Salvage's settings for each machine size, every value with
+    /// its reason. --undo takes them out again.
+    Trim {
+        /// Project to change: a .uproject file or its folder. Defaults to the
+        /// .uproject in the current folder.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+
+        /// Also write the low-RAM editor preset (shader compile workers,
+        /// virtual texture pools, Content Browser thumbnails).
+        #[arg(long)]
+        editor: bool,
+
+        /// Remove everything salvage trim added.
+        #[arg(long, conflicts_with_all = ["editor", "dry_run"])]
+        undo: bool,
+
+        /// Print what would be written, and change nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Set up clangd for a project's C++: a fast IDE without Xcode's indexer.
     ///
     /// Runs UnrealBuildTool to write compile_commands.json into the project,
@@ -176,6 +202,12 @@ fn main() -> ExitCode {
             json,
         } => run_soundings(&captures, targets, headroom, top, require, json),
         Command::Lldb(command) => run_lldb(command),
+        Command::Trim {
+            project,
+            editor,
+            undo,
+            dry_run,
+        } => run_trim(project, editor, undo, dry_run),
         Command::Clangd {
             project,
             engine,
@@ -355,6 +387,107 @@ fn run_lldb(command: LldbCommand) -> ExitCode {
     };
     let mut stdout = anstream::stdout();
     let _ = stdout.write_all(out.as_bytes());
+    ExitCode::SUCCESS
+}
+
+fn run_trim(project: Option<PathBuf>, editor: bool, undo: bool, dry_run: bool) -> ExitCode {
+    let project = match project {
+        Some(path) => match Project::open(&path) {
+            Ok(project) => project,
+            Err(error) => return usage_error(&error),
+        },
+        None => match std::env::current_dir()
+            .ok()
+            .and_then(|dir| Project::find_in(&dir))
+        {
+            Some(project) => project,
+            None => {
+                return usage_error(
+                    "no .uproject here; run this in a project folder or pass --project",
+                );
+            }
+        },
+    };
+    let mut out = anstream::stdout();
+    if dry_run {
+        for (file, block) in trim::plan(editor) {
+            let _ = writeln!(
+                out,
+                "\n{}\n{}\n{block}{}",
+                paint(BOLD, &file),
+                trim::BEGIN,
+                trim::END
+            );
+        }
+        return ExitCode::SUCCESS;
+    }
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let result = if undo {
+        trim::undo(&project, stamp)
+    } else {
+        trim::apply(&project, editor, stamp)
+    };
+    let results = match result {
+        Ok(results) => results,
+        Err(error) => {
+            let mut stderr = anstream::stderr();
+            let _ = writeln!(stderr, "{} {error}", paint(BAD, "salvage:"));
+            return ExitCode::FAILURE;
+        }
+    };
+    let relative = |path: &std::path::Path| {
+        path.strip_prefix(&project.dir)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| path.display().to_string())
+    };
+    let done = paint(GOOD, "✓");
+    let _ = writeln!(out, "\n  {}  {}", paint(BOLD, "salvage trim"), project.name);
+    if results.is_empty() {
+        let _ = writeln!(
+            out,
+            "  Nothing to undo: no salvage trim blocks in {}.\n",
+            project.dir.join("Config").display()
+        );
+        return ExitCode::SUCCESS;
+    }
+    for (path, written) in &results {
+        let line = match (undo, written) {
+            (true, salvage::fsutil::Written::Replaced { backup }) if !path.exists() => {
+                format!(
+                    "Removed {} (it only held Salvage's block; backup: {})",
+                    relative(path),
+                    relative(backup)
+                )
+            }
+            (true, salvage::fsutil::Written::Replaced { backup }) => {
+                format!(
+                    "Took Salvage's block out of {} (backup: {})",
+                    relative(path),
+                    relative(backup)
+                )
+            }
+            (_, salvage::fsutil::Written::Created) => format!("Wrote {}", relative(path)),
+            (_, salvage::fsutil::Written::Unchanged) => {
+                format!("{} is already up to date", relative(path))
+            }
+            (false, salvage::fsutil::Written::Replaced { backup }) => {
+                format!("Updated {} (backup: {})", relative(path), relative(backup))
+            }
+        };
+        let _ = writeln!(out, "  {done} {line}");
+    }
+    let _ = writeln!(
+        out,
+        "\n  {}\n",
+        if undo {
+            "Restart the editor or game for the stock settings to come back."
+        } else {
+            "Restart the editor or game to pick these up. Each value has its reason next to it;\n  `salvage trim --undo` takes them all out."
+        }
+    );
     ExitCode::SUCCESS
 }
 
