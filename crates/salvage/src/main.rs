@@ -118,10 +118,11 @@ enum Command {
         editor: bool,
 
         /// Remove everything salvage trim added.
-        #[arg(long, conflicts_with_all = ["editor", "dry_run"])]
+        #[arg(long, conflicts_with = "editor")]
         undo: bool,
 
-        /// Print what would be written, and change nothing.
+        /// Show which files would change and what would be written, and
+        /// change nothing.
         #[arg(long)]
         dry_run: bool,
     },
@@ -410,16 +411,7 @@ fn run_trim(project: Option<PathBuf>, editor: bool, undo: bool, dry_run: bool) -
     };
     let mut out = anstream::stdout();
     if dry_run {
-        for (file, block) in trim::plan(editor) {
-            let _ = writeln!(
-                out,
-                "\n{}\n{}\n{block}{}",
-                paint(BOLD, &file),
-                trim::BEGIN,
-                trim::END
-            );
-        }
-        return ExitCode::SUCCESS;
+        return trim_dry_run(&mut out, &project, editor, undo);
     }
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -491,6 +483,82 @@ fn run_trim(project: Option<PathBuf>, editor: bool, undo: bool, dry_run: bool) -
             "Restart the editor or game to pick these up. Each value has its reason next to it;\n  `salvage trim --undo` takes them all out."
         }
     );
+    ExitCode::SUCCESS
+}
+
+/// `salvage trim --dry-run`: which files would change, and the blocks that
+/// would be written into them.
+fn trim_dry_run(out: &mut impl Write, project: &Project, editor: bool, undo: bool) -> ExitCode {
+    let result = if undo {
+        trim::preview_undo(project)
+    } else {
+        trim::preview(project, editor)
+    };
+    let changes = match result {
+        Ok(changes) => changes,
+        Err(error) => {
+            let mut stderr = anstream::stderr();
+            let _ = writeln!(stderr, "{} {error}", paint(BAD, "salvage:"));
+            return ExitCode::FAILURE;
+        }
+    };
+    let relative = |path: &std::path::Path| {
+        path.strip_prefix(&project.dir)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| path.display().to_string())
+    };
+    let _ = writeln!(
+        out,
+        "\n  {}  {} {}",
+        paint(BOLD, "salvage trim"),
+        project.name,
+        paint(DIM, "(dry run: nothing is changed)")
+    );
+    if changes.is_empty() {
+        let _ = writeln!(
+            out,
+            "  Nothing to undo: no salvage trim blocks in Config.\n"
+        );
+        return ExitCode::SUCCESS;
+    }
+    for (path, change) in &changes {
+        let file = relative(path);
+        let line = match (undo, change) {
+            (_, trim::Change::Create) => format!("Would write {file}"),
+            (_, trim::Change::Unchanged) => format!("{file} is already up to date"),
+            (_, trim::Change::Delete) => {
+                format!("Would remove {file} (it only holds Salvage's block)")
+            }
+            (true, trim::Change::Update) => {
+                format!("Would take Salvage's block out of {file}, after backing it up")
+            }
+            (false, trim::Change::Update) => format!("Would update {file}, after backing it up"),
+        };
+        let mark = if *change == trim::Change::Unchanged {
+            paint(DIM, "·")
+        } else {
+            paint(WARN, "~")
+        };
+        let _ = writeln!(out, "  {mark} {line}");
+    }
+    if !undo {
+        for (file, block) in trim::plan(editor) {
+            let changes_file = changes.iter().any(|(path, change)| {
+                relative(path) == file
+                    && matches!(change, trim::Change::Create | trim::Change::Update)
+            });
+            if changes_file {
+                let _ = writeln!(
+                    out,
+                    "\n{}\n{}\n{block}{}",
+                    paint(BOLD, &file),
+                    trim::BEGIN,
+                    trim::END
+                );
+            }
+        }
+    }
+    let _ = writeln!(out);
     ExitCode::SUCCESS
 }
 

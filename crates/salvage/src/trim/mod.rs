@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use crate::fsutil::Written;
 use crate::project::Project;
 
-pub use blocks::{BEGIN, END, remove_block, upsert_block};
+pub use blocks::{BEGIN, Change, END, remove_block, upsert_block};
 pub use values::{EDITOR_TIERS, GAME_TIERS, Setting, Tier};
 
 /// Desktop platforms Salvage writes tiers for: (device profile, platform
@@ -106,12 +106,51 @@ pub fn undo(project: &Project, stamp: u64) -> Result<Vec<(PathBuf, Written)>, St
     Ok(results)
 }
 
+/// What `apply` would do to each file, without changing anything.
+pub fn preview(project: &Project, editor: bool) -> Result<Vec<(PathBuf, Change)>, String> {
+    let plan = plan(editor);
+    let mut results = Vec::new();
+    for relative in files() {
+        let path = project.dir.join(&relative);
+        let change = match plan.iter().find(|(file, _)| *file == relative) {
+            Some((_, block)) => blocks::preview_upsert(&path, block)?,
+            None => match blocks::preview_remove(&path)? {
+                Some(change) => change,
+                None => continue,
+            },
+        };
+        results.push((path, change));
+    }
+    Ok(results)
+}
+
+/// What `undo` would do to each file, without changing anything.
+pub fn preview_undo(project: &Project) -> Result<Vec<(PathBuf, Change)>, String> {
+    let mut results = Vec::new();
+    for relative in files() {
+        let path = project.dir.join(&relative);
+        if let Some(change) = blocks::preview_remove(&path)? {
+            results.push((path, change));
+        }
+    }
+    Ok(results)
+}
+
 /// Whether a project currently has Salvage's tiers.
 pub fn is_applied(project: &Project) -> bool {
     files()
         .iter()
         .any(|f| std::fs::read_to_string(project.dir.join(f)).is_ok_and(|t| t.contains(BEGIN)))
 }
+
+const DEVICE_PROFILES_DOCS: &str = concat!(
+    "https://dev.epicgames.com/documentation/en-us/unreal-engine",
+    "/setting-up-device-profiles-in-unreal-engine"
+);
+const SCALABILITY_DOCS: &str = concat!(
+    "https://dev.epicgames.com/documentation/en-us/unreal-engine",
+    "/scalability-reference-for-unreal-engine"
+);
 
 fn header(lines: &[&str]) -> String {
     let mut text = String::new();
@@ -129,6 +168,9 @@ fn setting_lines(key: &str, settings: &[Setting]) -> String {
         for line in setting.reason.lines() {
             text.push_str(&format!("; {line}\n"));
         }
+        if let Some(url) = setting.docs {
+            text.push_str(&format!("; Epic's docs: {url}\n"));
+        }
         text.push_str(&format!("{key}={}={}\n", setting.name, setting.value));
     }
     text
@@ -139,6 +181,10 @@ fn device_profiles(editor: bool) -> String {
         "Memory tiers. A +CVars_<Bucket> line only applies on machines in that memory bucket;",
         "the bucket thresholds are set in Config/<Platform>/<Platform>Engine.ini. Machines over",
         "16 GB are in the Larger or Largest bucket and get none of these.",
+        "A device profile value wins over the scalability presets (sg.* quality levels), so a",
+        "tier only pins a value that no preset goes below; the reasons name the preset values.",
+        format!("Memory buckets and +CVars_<Bucket>: {DEVICE_PROFILES_DOCS}").as_str(),
+        format!("Scalability presets: {SCALABILITY_DOCS}").as_str(),
     ]);
     for (profile, _, _) in PLATFORMS {
         text.push_str(&format!("\n[{profile} DeviceProfile]\n"));
@@ -175,6 +221,7 @@ fn platform_engine(target_section: &str) -> String {
         "Memory buckets for desktop machines, so 16, 12 and 8 GB machines get their own tiers",
         "(see Config/DefaultDeviceProfiles.ini). SmallestMemoryBucket_MinGB is deliberately left",
         "unset: if it's set, the engine refuses to start on machines below it.",
+        format!("Epic's docs: {DEVICE_PROFILES_DOCS}").as_str(),
     ]);
     text.push_str("\n[PlatformMemoryBuckets]\n");
     text.push_str(
@@ -185,9 +232,10 @@ fn platform_engine(target_section: &str) -> String {
     text.push_str("; 10 to 13 GB: the 12 GB tier. Anything below is the 8 GB tier.\nSmallerMemoryBucket_MinGB=10\n");
     text.push_str(&format!("\n[{target_section}]\n"));
     text.push_str(
-        "; Audio stream cache: 32 MB instead of 64 MB. It holds decoded chunks of streamed sounds,\n\
+        "; Audio stream cache: 32 MB instead of 64 MB. It holds compressed chunks of streamed sounds,\n\
          ; and half the size still keeps several seconds of many streams resident. Raise it if\n\
          ; streamed audio stutters. This is per platform, so it applies to every tier.\n\
+         ; Epic's docs: https://dev.epicgames.com/documentation/en-us/unreal-engine/an-overview-of-audio-stream-caching-in-unreal-engine\n\
          CacheSizeKB=32768\n",
     );
     text

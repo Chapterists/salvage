@@ -267,3 +267,98 @@ fn a_block_edited_in_the_middle_of_a_file_is_replaced_in_place() {
         "[A]\nX=1\n[B]\nY=2\n"
     );
 }
+
+#[test]
+fn a_dry_run_says_what_would_change_and_changes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = project(dir.path());
+    let mine = "[/Script/EngineSettings.GeneralProjectSettings]\nProjectID=1234\n";
+    fs::write(project.dir.join("Config/DefaultEngine.ini"), mine).unwrap();
+    let change = |changes: &[(PathBuf, Change)], file: &str| {
+        changes
+            .iter()
+            .find(|(path, _)| path.ends_with(file))
+            .map(|(_, change)| *change)
+    };
+
+    let first = preview(&project, true).unwrap();
+    assert_eq!(
+        change(&first, "Config/DefaultDeviceProfiles.ini"),
+        Some(Change::Create)
+    );
+    assert_eq!(
+        change(&first, "Config/DefaultEngine.ini"),
+        Some(Change::Update)
+    );
+    assert_eq!(read(&project, "Config/DefaultEngine.ini"), mine);
+    assert!(
+        !project
+            .dir
+            .join("Config/DefaultDeviceProfiles.ini")
+            .exists()
+    );
+    assert!(!project.dir.join("Config/Mac").exists());
+    assert!(
+        preview_undo(&project).unwrap().is_empty(),
+        "nothing to undo yet"
+    );
+
+    apply(&project, true, 1).unwrap();
+    let again = preview(&project, true).unwrap();
+    assert!(
+        again.iter().all(|(_, c)| *c == Change::Unchanged),
+        "{again:?}"
+    );
+
+    // Dropping the editor preset would take its blocks out.
+    let without_editor = preview(&project, false).unwrap();
+    assert_eq!(
+        change(&without_editor, "Config/DefaultEngine.ini"),
+        Some(Change::Update)
+    );
+    assert_eq!(
+        change(
+            &without_editor,
+            "Config/DefaultEditorPerProjectUserSettings.ini"
+        ),
+        Some(Change::Delete)
+    );
+
+    let undo_plan = preview_undo(&project).unwrap();
+    assert_eq!(
+        change(&undo_plan, "Config/DefaultEngine.ini"),
+        Some(Change::Update)
+    );
+    assert_eq!(
+        change(&undo_plan, "Config/Mac/MacEngine.ini"),
+        Some(Change::Delete)
+    );
+    assert!(is_applied(&project), "previews change nothing");
+}
+
+#[test]
+fn settings_with_an_epic_page_link_to_it() {
+    let block = &plan(false)[0].1;
+    let lines: Vec<&str> = block.lines().collect();
+    let link_above = |value: &str| {
+        let at = lines.iter().position(|l| l.ends_with(value)).unwrap();
+        lines[at - 1].starts_with("; Epic's docs: https://dev.epicgames.com/")
+    };
+    assert!(link_above("r.Streaming.PoolSize=400"));
+    assert!(link_above("r.Shadow.Virtual.MaxPhysicalPages=512"));
+    assert!(link_above("gc.TimeBetweenPurgingPendingKillObjects=30"));
+    assert!(block.contains("setting-up-device-profiles-in-unreal-engine"));
+    assert!(block.contains("scalability-reference-for-unreal-engine"));
+    for setting in GAME_TIERS
+        .iter()
+        .chain(EDITOR_TIERS.iter())
+        .flat_map(|t| t.settings)
+    {
+        if let Some(url) = setting.docs {
+            assert!(
+                url.starts_with("https://dev.epicgames.com/documentation/"),
+                "{url}"
+            );
+        }
+    }
+}
