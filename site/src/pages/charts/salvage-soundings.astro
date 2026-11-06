@@ -138,9 +138,30 @@ const sample = "The sample capture from Salvage's own tests: a made-up level cal
     <h2>What it doesn't do</h2>
     <ul>
       <li>It doesn't save memory. It tells you where memory goes, so you can decide what to change and check what the change did.</li>
-      <li>It doesn't read Unreal Insights traces. For allocation-level detail, use Insights.</li>
+      <li>It doesn't read Unreal Insights traces. For allocation-level detail, use Memory Insights (below).</li>
       <li>It doesn't know your players' machines. The targets and headroom are yours to set.</li>
     </ul>
+
+    <h2>Other good tools</h2>
+    <ul>
+      <li>
+        <strong><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/memory-insights-in-unreal-engine">Memory
+        Insights</a></strong>, part of Epic's Unreal Insights, records every allocation with its call stack and LLM tag. It
+        shows a timeline of memory use and has queries for things like leaks and long-lived allocations. When you
+        need to know which code allocated what, use it. Tracing has to be on from launch,
+        with <code>-trace=default,memory</code>.
+      </li>
+      <li>
+        <strong><a href="https://github.com/cignoir/memreport-insights">memreport-insights</a></strong> turns
+        a <code>.memreport</code> into interactive charts in your browser, and the file stays on your machine. It's MIT
+        licensed and runs with <code>npx memreport-insights</code>. Its README lists support for UE 4.27 and 5.1 to 5.6,
+        with 5.4 partial.
+      </li>
+    </ul>
+    <p>
+      <code>soundings</code> sits between them: a command-line budget and diff for memreports and LLM CSVs that fits in
+      a script or a CI job, where <code>--require</code> can fail a build that stops fitting.
+    </p>
 
     <GetSalvage />
   </div>
