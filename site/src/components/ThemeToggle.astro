@@ -1,0 +1,48 @@
+---
+// Switches between Night (default) and Day. The choice is remembered per
+// browser; the inline script in Base.astro applies it before first paint.
+---
+<button class="theme-toggle stencil" type="button" aria-label="Switch to day mode" data-theme-toggle>
+  <span class="when-night">Day</span><span class="when-day">Night</span>
+</button>
+<script>
+  const button = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
+  const sync = () => {
+    const day = document.documentElement.dataset.theme === "day";
+    button?.setAttribute("aria-label", day ? "Switch to night mode" : "Switch to day mode");
+  };
+  sync();
+  button?.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "day" ? "night" : "day";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("salvage-theme", next);
+    } catch {}
+    sync();
+  });
+</script>
+<style>
+  .theme-toggle {
+    appearance: none;
+    background: none;
+    color: var(--foam);
+    border: 1.5px solid rgb(244 241 234 / 0.35);
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .theme-toggle:hover {
+    border-color: var(--crane-yellow);
+    color: var(--crane-yellow);
+  }
+  .when-day {
+    display: none;
+  }
+  :global(:root[data-theme="day"]) .when-day {
+    display: inline;
+  }
+  :global(:root[data-theme="day"]) .when-night {
+    display: none;
+  }
+</style>

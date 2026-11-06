@@ -40,6 +40,7 @@ CLAUDE.local.md
 .claude/settings.local.json
 .claude/memory/
 .orca/
+.playwright-mcp/
 
 # --- OS / editor ----------------------------------------------------------
 .DS_Store

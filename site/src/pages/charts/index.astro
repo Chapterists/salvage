@@ -1,0 +1,35 @@
+---
+import Page from "../../layouts/Page.astro";
+---
+<Page
+  title="Charts"
+  label="Guides"
+  dek="A chart shows you how to do one specific thing: set something up, measure it, or fix it."
+>
+  <div class="prose">
+    <p class="empty">There are no charts yet.</p>
+    <p>
+      Each chart will be written alongside the tool or fix it describes, so it only ever describes something that
+      exists and has been tried. Until then there's nothing honest to write a guide about.
+    </p>
+    <h2>What a chart will look like</h2>
+    <ul>
+      <li>One task per chart, named for the job: what you'll have when you're done.</li>
+      <li>What you need before you start: hardware, operating system, engine version.</li>
+      <li>Every command you need to run, in order, and what you should see after each one.</li>
+      <li>How to undo it.</li>
+      <li>Why it works, briefly, so you can adapt it when your setup differs.</li>
+    </ul>
+    <p>
+      If you'd like to write one when the time comes, start with the <a href="/contributing/">contributing guide</a>.
+    </p>
+  </div>
+</Page>
+<style>
+  .empty {
+    font-size: var(--step-2);
+    font-stretch: var(--stretch-sign);
+    font-weight: 750;
+    line-height: 1.25;
+  }
+</style>

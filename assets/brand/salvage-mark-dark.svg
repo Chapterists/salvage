@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Salvage lifebuoy">
+<title>Salvage lifebuoy</title>
+  <circle cx="50" cy="50" r="35.25" fill="none" stroke="#FF5A1F" stroke-width="23.5"/>
+  <path fill="#F4F1EA" d="M91.5 72.07A47 47 0 0 1 72.07 91.5L61.03 70.75A23.5 23.5 0 0 0 70.75 61.03Z"/>
+  <path fill="#F4F1EA" d="M27.93 91.5A47 47 0 0 1 8.5 72.07L29.25 61.03A23.5 23.5 0 0 0 38.97 70.75Z"/>
+  <path fill="#F4F1EA" d="M8.5 27.93A47 47 0 0 1 27.93 8.5L38.97 29.25A23.5 23.5 0 0 0 29.25 38.97Z"/>
+  <path fill="#F4F1EA" d="M72.07 8.5A47 47 0 0 1 91.5 27.93L70.75 38.97A23.5 23.5 0 0 0 61.03 29.25Z"/>
+</svg>

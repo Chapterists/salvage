@@ -1,0 +1,109 @@
+/*
+ * Salvage design tokens.
+ *
+ * The palette comes from a working ship at sea: hull paint, antifouling, rescue
+ * gear. Contrast ratios are WCAG 2 figures, measured against the ground each
+ * color is used on. Antifouling red is for fills and large display only; it is
+ * too dark for body text on Night Sea (3.3:1).
+ */
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo/archivo-latin-standard-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: italic;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo/archivo-latin-standard-italic.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Martian Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  font-display: swap;
+  src: url("/fonts/martian-mono/martian-mono-latin-standard-normal.woff2") format("woff2-variations");
+}
+
+:root {
+  /* Palette */
+  --night-sea: #0a1630;      /* ground, dark */
+  --deep-sea: #061024;       /* below the waterline */
+  --hull-navy: #12264a;      /* above-waterline surfaces */
+  --hull-navy-hi: #1c3866;   /* topsides catching light */
+  --antifouling: #c2362b;    /* below-waterline hull. Foam on it: 4.83:1 */
+  --rescue-orange: #ff5a1f;  /* the one loud punchout. On Night Sea: 5.75:1 */
+  --crane-yellow: #ffc83d;   /* highlights, warnings. On Night Sea: 11.6:1 */
+  --sea-glass: #3ed6c1;      /* data, links on dark. On Night Sea: 9.9:1 */
+  --foam: #f4f1ea;           /* text on dark. On Night Sea: 15.9:1 */
+  --steel: #a9b4c8;          /* secondary text on dark. On Night Sea: 8.6:1 */
+  --chart-paper: #f4f2ec;    /* light ground */
+
+  /* Type */
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --stretch-hull: 125%;      /* hull lettering: as wide as Archivo goes */
+  --stretch-sign: 112%;      /* labels and navigation */
+
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.625rem;
+  --step-3: clamp(1.875rem, 1.4rem + 1.6vw, 2.5rem);
+  --step-4: clamp(2.375rem, 1.6rem + 3vw, 4rem);
+  --step-5: clamp(2.75rem, 1.4rem + 5.2vw, 6rem);
+
+  /* Space (4px base) */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4rem;
+  --s-9: 6rem;
+  --s-10: 8rem;
+
+  --gutter: clamp(1rem, 0.4rem + 3vw, 3rem);
+  --page-max: 78rem;
+  --measure: 40rem;
+}
+
+/* Night is the default. Ship-colored bands (header, hero, title bands, footer)
+   keep their colors in both modes; the reading ground changes. */
+:root,
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --ground: var(--night-sea);
+  --ground-2: var(--hull-navy);
+  --text: var(--foam);
+  --muted: var(--steel);
+  --link: var(--sea-glass);
+  --accent: var(--rescue-orange);
+  --mark: var(--crane-yellow);
+  --rule: rgb(244 241 234 / 0.14);
+  --code-bg: #0d1c3b;
+  --code-text: #dfe6f2;
+}
+
+:root[data-theme="day"] {
+  color-scheme: light;
+  --ground: var(--chart-paper);
+  --ground-2: #e7e4db;
+  --text: var(--night-sea);          /* 16.0:1 */
+  --muted: #4a5670;                  /* 6.6:1 */
+  --link: #0b7468;                   /* 5.1:1 */
+  --accent: #b83a0e;                 /* 5.1:1 */
+  --mark: #9a5b00;                   /* 4.9:1 */
+  --rule: rgb(10 22 48 / 0.16);
+  --code-bg: var(--night-sea);
+  --code-text: #dfe6f2;
+}
