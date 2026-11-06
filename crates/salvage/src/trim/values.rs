@@ -1,11 +1,12 @@
 //! Salvage's chosen values for each tier, each with the reason for it.
 //!
-//! What these move away from (UE 5.8): texture pool 70% of GPU memory on Mac,
-//! Nanite streaming pool 512 MB, render target pool kept below 400 MB, low-memory
-//! GC mode off, unreachable objects purged every 60 s. Virtual shadow map pages
-//! and the Lumen atlas come from the scalability presets (512 pages at Low and
-//! Medium shadows, 2048 at High, 4096 at Epic; atlas 2048 at Medium GI, 3584 at
-//! High, 4096 at Epic).
+//! What these move away from (UE 5.8): Nanite streaming pool 512 MB, low-memory
+//! GC mode off, unreachable objects purged every 60 s. The rest come from the
+//! scalability presets: texture pool 400, 600, 800 and 1000 MB at Low, Medium,
+//! High and Epic textures; render targets kept up to 300, 350, 400 and 400 MB at
+//! those post-process levels; virtual shadow map pages 512 at Low and Medium
+//! shadows, 2048 at High, 4096 at Epic; Lumen atlas 2048 at Medium GI, 3584 at
+//! High, 4096 at Epic.
 //!
 //! A device profile value wins over every quality preset, so a tier only pins a
 //! value that is no higher than any preset that uses the feature: then no quality
@@ -61,11 +62,6 @@ pub const GAME_TIERS: [Tier; 3] = [
         bucket: "Default",
         label: "16 GB tier",
         settings: &[
-            mac(
-                "r.Streaming.PoolSize",
-                "1000",
-                "Texture pool of 1000 MB, the size Epic gives the highest texture quality, instead\nof 70% of GPU memory (8.4 GB on a 16 GB Apple silicon Mac).",
-            ),
             all(
                 "r.Nanite.Streaming.StreamingPoolSize",
                 "384",
@@ -74,7 +70,7 @@ pub const GAME_TIERS: [Tier; 3] = [
             all(
                 "r.RenderTargetPoolMin",
                 "300",
-                "Start releasing unused render targets above 300 MB instead of 400 MB.",
+                "Start releasing unused render targets above 300 MB, what the Low post-process preset\nuses (Medium 350, High and Epic 400).",
             ),
             all(
                 "gc.LowMemory.MemoryThresholdMB",
@@ -93,7 +89,6 @@ pub const GAME_TIERS: [Tier; 3] = [
         bucket: "Smaller",
         label: "12 GB tier",
         settings: &[
-            mac("r.Streaming.PoolSize", "768", "Texture pool of 768 MB."),
             all(
                 "r.Nanite.Streaming.StreamingPoolSize",
                 "320",
@@ -133,8 +128,8 @@ pub const GAME_TIERS: [Tier; 3] = [
         settings: &[
             mac(
                 "r.Streaming.PoolSize",
-                "512",
-                "Texture pool of 512 MB: textures drop mips sooner.",
+                "400",
+                "Texture pool of 400 MB, what the Low texture preset uses (Medium 600, High 800,\nEpic 1000): when a scene wants more texture data than that, textures drop to lower\nmips. Mac only: Apple silicon shares memory between CPU and GPU, so the pool comes\nout of the machine's RAM.",
             ),
             all(
                 "r.Nanite.Streaming.StreamingPoolSize",

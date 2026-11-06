@@ -47,7 +47,7 @@ fn tiers_land_in_the_right_buckets() {
     let block = &plan(false)[0].1;
     let mac_8 = bucket_cvars(block, "Mac", "Smallest");
     assert!(
-        mac_8.contains(&"r.Streaming.PoolSize=512".to_string()),
+        mac_8.contains(&"r.Streaming.PoolSize=400".to_string()),
         "{mac_8:?}"
     );
     assert!(mac_8.contains(&"r.Nanite.Streaming.StreamingPoolSize=256".to_string()));
@@ -56,14 +56,18 @@ fn tiers_land_in_the_right_buckets() {
         !mac_8.iter().any(|c| c.starts_with("grass.")),
         "grass is left alone"
     );
-    assert!(
-        bucket_cvars(block, "Mac", "Smaller").contains(&"r.Streaming.PoolSize=768".to_string())
-    );
-    assert!(
-        bucket_cvars(block, "Mac", "Default").contains(&"r.Streaming.PoolSize=1000".to_string())
-    );
+    // The texture pool is pinned on 8 GB only, at the Low preset's size: a higher pin
+    // would add memory at Low, Medium or High textures.
+    for bucket in ["Smaller", "Default"] {
+        assert!(
+            !bucket_cvars(block, "Mac", bucket)
+                .iter()
+                .any(|c| c.starts_with("r.Streaming.PoolSize")),
+            "{bucket}"
+        );
+    }
 
-    // The texture pool tiers are Mac-only; Windows and Linux size it from dedicated VRAM.
+    // The texture pool pin is Mac-only; Windows and Linux size it from dedicated VRAM.
     let windows_8 = bucket_cvars(block, "Windows", "Smallest");
     assert!(
         !windows_8
@@ -118,15 +122,11 @@ fn buckets_never_set_the_smallest_threshold() {
     assert_eq!(bucket("DefaultMemoryBucket_MinGB").as_deref(), Some("14"));
     assert_eq!(bucket("SmallerMemoryBucket_MinGB").as_deref(), Some("10"));
     assert_eq!(bucket("LargerMemoryBucket_MinGB").as_deref(), Some("17"));
-    assert!(entries.iter().any(|e| e.section == "TextureStreaming"
-        && e.key == "PoolSizeVRAMPercentage"
-        && e.value == "0"));
     let windows = &plan(false)
         .into_iter()
         .find(|(f, _)| f == "Config/Windows/WindowsEngine.ini")
         .unwrap()
         .1;
-    assert!(!windows.contains("PoolSizeVRAMPercentage"));
     assert!(windows.contains("[/Script/WindowsTargetPlatform.WindowsTargetSettings]\n"));
 }
 
@@ -201,7 +201,7 @@ fn dropping_the_editor_preset_removes_only_its_blocks() {
         !read(&project, "Config/DefaultDeviceProfiles.ini")
             .contains("r.ShaderCompiler.MemoryLimit")
     );
-    assert!(read(&project, "Config/Mac/MacEngine.ini").contains("PoolSizeVRAMPercentage=0"));
+    assert!(read(&project, "Config/Mac/MacEngine.ini").contains("DefaultMemoryBucket_MinGB=14"));
 }
 
 #[test]

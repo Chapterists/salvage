@@ -59,7 +59,7 @@ pub fn plan(editor: bool) -> Vec<(String, String)> {
     for (_, folder, section) in PLATFORMS {
         plan.push((
             format!("Config/{folder}/{folder}Engine.ini"),
-            platform_engine(folder, section),
+            platform_engine(section),
         ));
     }
     if editor {
@@ -170,7 +170,7 @@ fn device_profiles(editor: bool) -> String {
     text
 }
 
-fn platform_engine(folder: &str, target_section: &str) -> String {
+fn platform_engine(target_section: &str) -> String {
     let mut text = header(&[
         "Memory buckets for desktop machines, so 16, 12 and 8 GB machines get their own tiers",
         "(see Config/DefaultDeviceProfiles.ini). SmallestMemoryBucket_MinGB is deliberately left",
@@ -183,15 +183,6 @@ fn platform_engine(folder: &str, target_section: &str) -> String {
     text.push_str("; 17 to 31 GB: no Salvage tier, so these machines keep stock settings.\nLargerMemoryBucket_MinGB=17\n");
     text.push_str("; 14 to 16 GB: the 16 GB tier.\nDefaultMemoryBucket_MinGB=14\n");
     text.push_str("; 10 to 13 GB: the 12 GB tier. Anything below is the 8 GB tier.\nSmallerMemoryBucket_MinGB=10\n");
-    if folder == "Mac" {
-        text.push_str("\n[TextureStreaming]\n");
-        text.push_str(
-            "; Apple silicon shares memory between CPU and GPU, and by default the texture pool is\n\
-             ; 70% of GPU memory, which is most of the machine. 0 hands the pool size to\n\
-             ; r.Streaming.PoolSize, which the memory tiers set per machine size.\n\
-             PoolSizeVRAMPercentage=0\n",
-        );
-    }
     text.push_str(&format!("\n[{target_section}]\n"));
     text.push_str(
         "; Audio stream cache: 32 MB instead of 64 MB. It holds decoded chunks of streamed sounds,\n\
