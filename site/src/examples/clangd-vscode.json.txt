@@ -1,0 +1,10 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--background-index",
+    "--header-insertion=never",
+    "--completion-style=detailed",
+    "--pch-storage=disk",
+    "--query-driver=/Applications/Xcode*.app/Contents/Developer/Toolchains/**/clang*"
+  ]
+}
