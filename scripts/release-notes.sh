@@ -18,6 +18,8 @@ else
 fi
 
 cat <<NOTES
+Salvage is Chapterists' open-source toolbox: the tools we use to make our stories. The first tools are for Unreal Engine, making games and the editor run on lighter machines and making development on macOS fast and pleasant.
+
 Download the archive for your machine, check it against \`SHA256SUMS\`, extract it, and put \`salvage\` somewhere on your \`PATH\`.
 
 | Platform | Archive |

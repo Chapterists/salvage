@@ -1,6 +1,6 @@
 [package]
 name = "salvage"
-description = "Get more out of the hardware you already have: Unreal Engine tools for lighter machines and macOS."
+description = "Chapterists' open-source toolbox: the tools we use to make our stories, starting with Unreal Engine on lighter machines and on macOS."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

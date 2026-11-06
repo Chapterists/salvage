@@ -1,7 +1,8 @@
-//! Salvage: get more out of the hardware you already have.
+//! Salvage: Chapterists' open-source toolbox, the tools we use to make our stories.
 //!
-//! Tools for running and developing Unreal Engine projects on lower-powered
-//! machines and on macOS. The `salvage` binary is a thin layer over this crate.
+//! The first tools are for Unreal Engine: running games and the editor on
+//! lower-powered machines, and developing on macOS. The `salvage` binary is a
+//! thin layer over this crate.
 
 pub mod doctor;
 pub mod engine;
