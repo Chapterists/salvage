@@ -9,6 +9,7 @@ const LLM: &str = include_str!("../../tests/fixtures/LLM_harbor.csv");
 const LLM_PLATFORM: &str = include_str!("../../tests/fixtures/LLMPlatform_harbor.csv");
 const LLM_NESTED: &str = include_str!("../../tests/fixtures/LLM_nested.csv");
 const LLM_ADDRESS_SPACE: &str = include_str!("../../tests/fixtures/LLMPlatform_addressspace.csv");
+const LLM_DEFAULT_ADDRESS_SPACE: &str = include_str!("../../tests/fixtures/LLM_addressspace.csv");
 const FILTERED: &str = include_str!("../../tests/fixtures/filtered-sections.memreport");
 
 fn parse(name: &str, text: &str) -> Sounding {
@@ -186,7 +187,10 @@ fn knobs_match_common_systems() {
     );
     assert_eq!(setting("Shadow"), Some("r.Shadow.Virtual.MaxPhysicalPages"));
     assert_eq!(setting("VirtualTexture"), Some("r.VT.PoolSizeScale"));
-    assert_eq!(setting("RenderTargets"), Some("r.RenderTargetPoolMin"));
+    assert_eq!(
+        setting("RenderTargets"),
+        Some("r.LumenScene.SurfaceCache.AtlasSize")
+    );
     assert_eq!(setting("GPUScene"), None);
 }
 
@@ -410,4 +414,14 @@ fn address_space_totals_fall_back_to_tracked() {
             .all(|p| !["Total", "Untracked", "OSAvailable"].contains(&p.name.as_str()))
     );
     assert_eq!(pool(&run, View::Llm, "Metal Textures").bytes, mib(1700.0));
+}
+
+#[test]
+fn the_default_tracker_csv_is_not_taken_for_the_platform_one() {
+    // On macOS the default tracker's CSV has an address-space Total as well.
+    let run = parse("LLM_addressspace.csv", LLM_DEFAULT_ADDRESS_SPACE);
+    assert_eq!(run.kind, Kind::Llm);
+    assert_eq!(run.peak, Some(mib(95.5)));
+    assert!(run.labels.iter().any(|l| l.contains("LLMPlatform")));
+    assert_eq!(pool(&run, View::Llm, "UObject").bytes, mib(210.0));
 }

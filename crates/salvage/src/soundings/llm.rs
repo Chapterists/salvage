@@ -42,10 +42,20 @@ pub fn parse(path: &Path, text: &str) -> Result<Sounding, String> {
     let at = |row: &Vec<u64>, i: usize| row.get(i).copied().unwrap_or(0);
     let peak = |i: usize| rows.iter().map(|row| at(row, i)).max().unwrap_or(0);
 
-    let platform = header.iter().any(|c| c == TOTAL)
-        || path
-            .file_name()
-            .is_some_and(|n| n.to_string_lossy().starts_with("LLMPlatform"));
+    // The file name says which tracker wrote it. Both can have a Total column
+    // (on macOS the default tracker's is address space too), so the header
+    // only decides for files that were renamed.
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let platform = if name.starts_with("LLMPlatform") {
+        true
+    } else if name.starts_with("LLM_") {
+        false
+    } else {
+        header.iter().any(|c| c == TOTAL)
+    };
     let column = |name: &str| header.iter().position(|c| c == name);
     let mut labels = vec![format!("{} samples", rows.len())];
     // On some platforms (macOS among them) the platform tracker's Total is the
@@ -57,6 +67,11 @@ pub fn parse(path: &Path, text: &str) -> Result<Sounding, String> {
     };
     if address_space {
         labels.push("Total is address space here, so the draft uses TrackedTotal".to_string());
+        if !platform {
+            labels.push(
+                "for the whole process, read the LLMPlatform CSV from the same run".to_string(),
+            );
+        }
     }
     let footprint_column = if address_space {
         column(TRACKED_TOTAL)

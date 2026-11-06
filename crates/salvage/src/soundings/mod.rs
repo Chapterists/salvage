@@ -265,8 +265,10 @@ pub fn knob_for(name: &str) -> Option<Knob> {
         )
     } else if name.contains("rendertarget") || name.contains("render target") {
         knob(
-            "r.RenderTargetPoolMin",
-            "MB the render target pool keeps before releasing unused targets.",
+            "r.LumenScene.SurfaceCache.AtlasSize",
+            "Render targets in use every frame stay in the pool. With Lumen and virtual shadow \
+             maps the biggest are usually Lumen's surface cache (this) and the shadow page pool \
+             (r.Shadow.Virtual.MaxPhysicalPages). r.RenderTargetPoolMin only frees unused ones.",
         )
     } else if name.contains("texture") {
         knob("r.Streaming.PoolSize", "Texture streaming pool, in MB.")
