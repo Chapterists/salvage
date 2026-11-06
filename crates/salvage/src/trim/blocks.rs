@@ -64,7 +64,8 @@ pub fn upsert_block(file: &Path, body: &str, stamp: u64) -> Result<Written, Stri
 }
 
 /// Takes Salvage's block out of `file`. Returns None when there was none. A
-/// file left with nothing but whitespace is deleted (after a backup).
+/// file that held nothing else is deleted, along with its folder if that's
+/// now empty.
 pub fn remove_block(file: &Path, stamp: u64) -> Result<Option<Written>, String> {
     let target = resolve(file);
     let Ok(text) = std::fs::read_to_string(&target) else {
@@ -79,13 +80,18 @@ pub fn remove_block(file: &Path, stamp: u64) -> Result<Option<Written>, String> 
         .map(|b| format!("{b}\n"))
         .unwrap_or_else(|| before.to_string());
     let updated = format!("{before}{after}");
-    let backup = back_up(file, &target, stamp)?;
     if updated.trim().is_empty() {
+        // Nothing but our block: no one else's content to keep, so no backup.
         std::fs::remove_file(&target)
             .map_err(|e| format!("can't remove {}: {e}", file.display()))?;
-    } else {
-        write_atomically(&target, &updated, Some(&target))
-            .map_err(|e| format!("can't write {}: {e}", file.display()))?;
+        // Tidy up a platform folder (Config/Mac...) that's now empty.
+        if let Some(dir) = file.parent() {
+            let _ = std::fs::remove_dir(dir);
+        }
+        return Ok(Some(Written::Removed));
     }
+    let backup = back_up(file, &target, stamp)?;
+    write_atomically(&target, &updated, Some(&target))
+        .map_err(|e| format!("can't write {}: {e}", file.display()))?;
     Ok(Some(Written::Replaced { backup }))
 }

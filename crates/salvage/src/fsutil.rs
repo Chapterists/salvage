@@ -69,6 +69,8 @@ pub enum Written {
         backup: PathBuf,
     },
     Unchanged,
+    /// Deleted: the file held nothing but what Salvage had written into it.
+    Removed,
 }
 
 /// Writes `text` to `file`. A new file is just created; an identical one is

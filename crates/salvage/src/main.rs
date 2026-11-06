@@ -470,6 +470,9 @@ fn run_trim(project: Option<PathBuf>, editor: bool, undo: bool, dry_run: bool) -
                 )
             }
             (_, salvage::fsutil::Written::Created) => format!("Wrote {}", relative(path)),
+            (_, salvage::fsutil::Written::Removed) => {
+                format!("Removed {} (it only held Salvage's block)", relative(path))
+            }
             (_, salvage::fsutil::Written::Unchanged) => {
                 format!("{} is already up to date", relative(path))
             }
@@ -637,6 +640,7 @@ fn run_clangd(args: ClangdArgs) -> ExitCode {
         let line = match written {
             salvage::fsutil::Written::Created => format!("Wrote {}", relative(path)),
             salvage::fsutil::Written::Unchanged => format!("{} is already set up", relative(path)),
+            salvage::fsutil::Written::Removed => format!("Removed {}", relative(path)),
             salvage::fsutil::Written::Replaced { backup } => {
                 format!("Updated {} (backup: {})", relative(path), relative(backup))
             }
