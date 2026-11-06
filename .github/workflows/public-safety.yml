@@ -3,6 +3,8 @@ name: Public safety
 on:
   push:
   pull_request:
+    # "edited" re-checks the title and body whenever they change after opening.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
