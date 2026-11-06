@@ -3,6 +3,12 @@ import Page from "../../layouts/Page.astro";
 
 const charts = [
   {
+    href: "/charts/unreal-memory-on-16-gb/",
+    title: "Where Unreal's memory goes on a 16 GB machine",
+    tool: "UE 5.8 defaults",
+    what: "The texture pool, Nanite, shadows, Lumen, render targets, audio, garbage collection and shader workers: what each one is, its default, and the setting behind it.",
+  },
+  {
     href: "/charts/salvage-doctor/",
     title: "Check a Mac for Unreal",
     tool: "salvage doctor",
@@ -24,7 +30,7 @@ const charts = [
 ---
 <Page
   title="Charts"
-  dek="A chart shows you how to do one specific thing: set something up, measure it, or fix it. Each one is written alongside the tool it describes."
+  dek="Guides to Unreal on the machines people already have: how something works, how to measure it, and how to use the tools that do."
 >
   <ol class="charts">
     {charts.map((c) => (

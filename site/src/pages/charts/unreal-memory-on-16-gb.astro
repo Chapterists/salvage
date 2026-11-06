@@ -1,0 +1,533 @@
+---
+// An explainer: where a UE 5.8 game and the editor spend memory by default.
+// Every default here was read from Unreal Engine 5.8.4's own settings. Setting
+// names and values only; never paste engine source or config excerpts.
+import Page from "../../layouts/Page.astro";
+import MemoryDraft from "../../components/MemoryDraft.astro";
+
+const DOCS = "https://dev.epicgames.com/documentation/en-us/unreal-engine";
+const LEVELS = ["Low", "Medium", "High", "Epic", "Cine"];
+
+type Section = {
+  id: string;
+  name: string;
+  mark: string;
+  markNote: string;
+  lives: string;
+  ladder?: { values: string[]; unit: string };
+  flat?: string;
+  plain: string;
+  why: string[];
+  unverified?: string;
+  settings: string[];
+  settingsNote?: string;
+  see?: string;
+  docs?: { href: string; title: string }[];
+};
+
+const sections: Section[] = [
+  {
+    id: "texture-pool",
+    name: "Texture streaming pool",
+    mark: "1000 MB",
+    markNote: "at Epic",
+    lives: "Graphics memory. In the game and the editor.",
+    ladder: { values: ["400", "600", "800", "1000", "3000"], unit: "MB" },
+    plain:
+      "Unreal doesn't load every texture at full detail. It streams in the detail the camera needs and keeps it in a pool with a set budget. When the pool is full, textures get less detail instead of the pool growing.",
+    why: [
+      "At Low, Medium and High, the pool is also capped to fit the graphics card: 70% of its dedicated memory on Windows and Mac. At Epic and Cine the cap is off, so the pool is a flat 1000 MB whatever the card has.",
+      "On a card with 2 to 4 GB of its own memory, 1000 MB of textures plus the other budgets on this page can add up to more than the card holds, and the overflow ends up in system RAM. In the editor the cap is off at every level.",
+      "On a Mac with Apple silicon, the graphics memory is the same memory as everything else, so this budget comes straight out of your 16 GB.",
+    ],
+    unverified:
+      "The cap is worked out from the graphics memory the system reports. What an Apple M4 reports to the engine as its graphics memory, we haven't confirmed.",
+    settings: ["r.Streaming.PoolSize", "r.Streaming.LimitPoolSizeToVRAM"],
+    see: "stat streaming",
+    docs: [
+      { href: `${DOCS}/texture-streaming-overview-for-unreal-engine`, title: "Texture Streaming Overview" },
+      { href: `${DOCS}/texture-streaming-configuration-in-unreal-engine`, title: "Texture Streaming Configuration" },
+    ],
+  },
+  {
+    id: "nanite-pool",
+    name: "Nanite streaming pool",
+    mark: "512 MB",
+    markNote: "at every level",
+    lives: "Graphics memory. In the game and the editor.",
+    flat: "512 MB at every quality level, plus the root pages that always stay loaded.",
+    plain:
+      "Nanite stores each mesh as small pages of geometry and streams in the pages the camera needs, much as it does with texture detail. The streaming pool holds those pages. A base set of root pages stays loaded on top of it.",
+    why: [
+      "No quality level touches it. Turning a game down from Epic to Low shrinks the texture pool, the shadow pool and Lumen, and leaves Nanite's 512 MB exactly where it was.",
+      "On a 16 GB machine with shared memory that's about 3% of everything. On an 8 GB machine it's about 6%.",
+    ],
+    settings: ["r.Nanite.Streaming.StreamingPoolSize"],
+    see: "r.Nanite.ShowStats",
+    docs: [{ href: `${DOCS}/nanite-virtualized-geometry-in-unreal-engine`, title: "Nanite Virtualized Geometry" }],
+  },
+  {
+    id: "virtual-shadow-maps",
+    name: "Virtual shadow maps",
+    mark: "4096 pages",
+    markNote: "at Epic",
+    lives: "Graphics memory. In the game and the editor.",
+    ladder: { values: ["512", "512", "2048", "4096", "8192"], unit: "pages" },
+    plain:
+      "Virtual shadow maps cut very large shadow maps into pages of 128 by 128 texels and keep only the pages the view needs, in a pool of physical pages.",
+    why: [
+      "At Epic the pool holds 8 times as many pages as at Low or Medium, and Cine doubles it again. New projects start with virtual shadow maps turned on.",
+    ],
+    unverified:
+      "How many megabytes a page takes depends on the format it's stored in. If it's 4 bytes per texel, a page is 64 KB and Epic's pool is about 256 MB, plus page tables. We haven't confirmed the format, so that figure is an estimate.",
+    settings: ["r.Shadow.Virtual.MaxPhysicalPages"],
+    see: "r.Shadow.Virtual.ShowStats 1",
+    docs: [{ href: `${DOCS}/virtual-shadow-maps-in-unreal-engine`, title: "Virtual Shadow Maps" }],
+  },
+  {
+    id: "lumen-surface-cache",
+    name: "Lumen surface cache",
+    mark: "4096²",
+    markNote: "atlas at Epic",
+    lives: "Graphics memory. In the game and the editor.",
+    ladder: { values: ["off", "2048", "3584", "4096", "4096"], unit: "texels square" },
+    plain:
+      "Lumen lights a scene from a simplified copy of it. The surface cache is part of that copy: one big texture atlas holding low-detail versions of every surface's color and material, so Lumen doesn't have to look at the real ones each frame.",
+    why: [
+      "Each step up is a bigger atlas. Epic's 4096 by 4096 covers 4 times the area of Medium's 2048 by 2048. At Low, Lumen's lighting is off altogether.",
+      "New projects start with Lumen on for both lighting and reflections, and with mesh distance fields generated for every mesh you import (r.GenerateMeshDistanceFields). Those cost memory and disk of their own.",
+    ],
+    unverified: "How many megabytes an atlas of each size takes, we haven't confirmed.",
+    settings: ["r.LumenScene.SurfaceCache.AtlasSize", "sg.GlobalIlluminationQuality"],
+    docs: [{ href: `${DOCS}/lumen-technical-details-in-unreal-engine`, title: "Lumen Technical Details" }],
+  },
+  {
+    id: "render-target-pool",
+    name: "Render target pool",
+    mark: "400 MB",
+    markNote: "floor at Epic",
+    lives: "Graphics memory. In the game and the editor.",
+    ladder: { values: ["300", "350", "400", "400", "1000"], unit: "MB" },
+    plain:
+      "Every frame, the renderer draws into dozens of temporary images: depth, lighting, effects, post-processing. Rather than make new ones each frame, it keeps them in a pool and reuses them.",
+    why: [
+      "This setting is a floor, not a cap. The pool can grow past it, but while it's under the floor it never gives anything back. Up to 400 MB at Epic can stay held long after the scene that needed it has gone.",
+      "The setting's own description in the engine still says the default is 200 MB. In 5.8.4 it's 400.",
+    ],
+    settings: ["r.RenderTargetPoolMin"],
+    see: "r.DumpRenderTargetPoolMemory",
+  },
+  {
+    id: "audio-cache",
+    name: "Audio stream cache",
+    mark: "64 MB",
+    markNote: "at every level",
+    lives: "System memory. In the game and the editor.",
+    flat: "64 MB in the engine's default settings, whatever the machine.",
+    plain:
+      "Sounds set to stream are loaded in chunks, and the engine keeps recent chunks in a cache so they don't load again every time they play.",
+    why: [
+      "This one is small, and it's on the list for a different reason: it's the same 64 MB on an 8 GB laptop as on a 128 GB workstation. Nothing shrinks it on a small machine.",
+    ],
+    settings: ["au.streamcaching.StreamCacheSizeOverrideMB", "Max Cache Size (KB) in each platform's audio settings"],
+    see: "audiomemreport",
+    docs: [{ href: `${DOCS}/an-overview-of-audio-stream-caching-in-unreal-engine`, title: "An overview of Audio Stream Caching" }],
+  },
+  {
+    id: "garbage-collection",
+    name: "Garbage collection",
+    mark: "61.1 s",
+    markNote: "between sweeps",
+    lives: "System memory. In the game and the editor.",
+    flat: "A sweep every 61.1 seconds. Low-memory mode off.",
+    plain:
+      "Unreal frees game objects that nothing refers to any more in a regular sweep called garbage collection. Until a sweep runs, they keep their memory.",
+    why: [
+      "Up to a minute of garbage can pile up between sweeps.",
+      "The engine has a low-memory mode that sweeps every 30 seconds once free memory drops below a threshold. The threshold is 0 MB, so the mode never turns on unless a project sets one.",
+      "iOS and Android also cap how many objects a game can have. Desktop sets no cap.",
+    ],
+    settings: ["gc.TimeBetweenPurgingPendingKillObjects", "gc.LowMemory.MemoryThresholdMB", "gc.LowMemory.TimeBetweenPurgingPendingKillObjects"],
+    see: "obj list -resourcesizesort",
+    docs: [
+      { href: `${DOCS}/garbage-collection-settings-in-the-unreal-engine-project-settings`, title: "Garbage Collection Settings" },
+      { href: `${DOCS}/unreal-object-handling-in-unreal-engine`, title: "Unreal Object Handling" },
+    ],
+  },
+  {
+    id: "shader-compile-workers",
+    name: "Shader compile workers",
+    mark: "7 workers",
+    markNote: "on a 10-core M4",
+    lives: "System memory. In the editor.",
+    flat: "On machines with up to 12 CPU threads: one worker per thread, minus 3 kept for the editor. Above 12 threads: half the threads.",
+    plain:
+      "The editor compiles shaders in separate ShaderCompileWorker processes, so it can use every core and stay responsive while it waits. Each worker is a program of its own, with memory of its own.",
+    why: [
+      "On a 10-core Apple M4 that's 7 workers, all running at once on top of the editor, at exactly the moment the editor is busiest: opening a project, changing a material, switching quality levels.",
+      "The engine can size the worker count to the memory you have, but by default only does it on build machines. Turning it on takes a config switch (bForceUseSCWMemoryPressureLimits) plus three memory values, which ship commented out.",
+    ],
+    unverified:
+      "How much memory each worker uses in 5.8, we haven't measured. Epic's config gives 0.4 GB per worker as an example value for the memory-sizing feature, and forum reports from the UE4 era describe 2 GB or more.",
+    settings: ["NumUnusedShaderCompilingThreads", "bForceUseSCWMemoryPressureLimits"],
+    settingsNote: "Both are in the [DevOptions.Shaders] section of the engine's config, not console variables.",
+  },
+];
+
+const summary = [
+  ["Texture streaming pool", "1000 MB", "400 to 3000 MB", "Graphics"],
+  ["Nanite streaming pool", "512 MB", "No", "Graphics"],
+  ["Virtual shadow maps", "4096 pages", "512 to 8192 pages", "Graphics"],
+  ["Lumen surface cache", "4096² atlas", "Off to 4096²", "Graphics"],
+  ["Render target pool", "400 MB floor", "300 to 1000 MB", "Graphics"],
+  ["Audio stream cache", "64 MB", "No", "System"],
+  ["Garbage collection", "Every 61.1 s", "No", "System"],
+  ["Shader compile workers", "7 on a 10-core M4", "No", "System (editor only)"],
+];
+---
+<Page
+  title="Where Unreal's memory goes on a 16 GB machine"
+  compact
+  description="Where an Unreal Engine 5.8 game and the editor spend RAM and graphics memory by default, why those defaults are costly on 8 to 16 GB machines, and the setting behind each one."
+  dek="Epic recommends 32 GB of RAM for the Unreal editor. Lots of people make and play Unreal games with half that. Here's where a game and the editor spend memory by default in Unreal Engine 5.8, and the setting behind each one."
+>
+  <article class="prose wide memory">
+    <p class="lede">
+      Most of Unreal's biggest memory budgets aren't sized to your machine. They're sized by a quality level, and
+      unless a game or a player picks another, the engine starts at Epic, the second highest. A few ignore quality
+      altogether. The engine's config even defines memory tiers for machines (6, 8 and 12 GB and up), but the
+      default Windows, Mac and Linux device profiles don't change a single memory setting.
+    </p>
+    <p>
+      Everything here comes from the default settings of Unreal Engine 5.8.4, read in November 2026, and from Epic's
+      documentation, linked in each section. It names settings and their default values. None of it is a
+      measurement of a running game, and where we haven't confirmed something, it says so.
+    </p>
+
+    <h2>Two kinds of memory, or one</h2>
+    <p>
+      On a PC with a graphics card, the GPU has its own memory (VRAM) and the game uses the system's RAM. Most of what
+      follows lives in VRAM, and when it doesn't fit, the overflow lands in RAM.
+    </p>
+    <p>
+      On a Mac with Apple silicon, and on PCs with integrated graphics, there's only one pool. The GPU's budgets come out
+      of the same memory as the game, the editor, the operating system and your browser. That's the 16 GB in the title.
+    </p>
+    <p>
+      Unreal groups its settings into quality levels: Low, Medium, High, Epic and Cine. Where a budget changes with the
+      level, the sections below give all five. Epic's <a href={`${DOCS}/scalability-reference-for-unreal-engine`}>Scalability
+      Reference</a> covers what each level changes.
+    </p>
+  </article>
+
+  <MemoryDraft />
+
+  <div class="prose wide memory">
+    <h2>The short version</h2>
+    <table class="summary">
+      <thead>
+        <tr>
+          <th scope="col">What</th>
+          <th scope="col">At Epic</th>
+          <th scope="col">Changes with quality</th>
+          <th scope="col">Memory</th>
+        </tr>
+      </thead>
+      <tbody>
+        {summary.map(([what, epic, range, mem], i) => (
+          <tr>
+            <th scope="row"><a href={`#${sections[i].id}`}>{what}</a></th>
+            <td class="num">{epic}</td>
+            <td class:list={{ never: range === "No" }}>{range}</td>
+            <td>{mem}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pools">
+    {sections.map((s) => (
+      <section class="pool" id={s.id} aria-labelledby={`${s.id}-title`}>
+        <header>
+          <h2 id={`${s.id}-title`}>{s.name}</h2>
+          <p class="mark"><span class="value">{s.mark}</span> <span class="note">{s.markNote}</span></p>
+        </header>
+        <div class="text">
+          <p class="plain">{s.plain}</p>
+          {s.ladder && (
+            <ol class="ladder" aria-label={`${s.name} by quality level, in ${s.ladder.unit}`}>
+              {s.ladder.values.map((v, i) => (
+                <li class:list={{ epic: LEVELS[i] === "Epic" }}>
+                  <span class="level">{LEVELS[i]}</span>
+                  <span class="v">{v}</span>
+                </li>
+              ))}
+              <li class="unit">{s.ladder.unit}</li>
+            </ol>
+          )}
+          {s.flat && <p class="flat">{s.flat}</p>}
+          {s.why.map((p) => <p>{p}</p>)}
+          {s.unverified && (
+            <p class="unverified"><strong>Unverified.</strong> {s.unverified}</p>
+          )}
+          <dl class="facts">
+            <div>
+              <dt>Set by</dt>
+              <dd>
+                {s.settings.map((x, i) => (
+                  <>
+                    {x.includes(" ") ? <span>{x}</span> : <code>{x}</code>}
+                    {i < s.settings.length - 1 && <span class="sep"> · </span>}
+                  </>
+                ))}
+                {s.settingsNote && <span class="settings-note">{s.settingsNote}</span>}
+              </dd>
+            </div>
+            <div><dt>Lives in</dt><dd>{s.lives}</dd></div>
+            {s.see && <div><dt>See it</dt><dd><code>{s.see}</code> in the console</dd></div>}
+            <div>
+              <dt>Epic's docs</dt>
+              <dd>
+                {s.docs
+                  ? s.docs.map((d, i) => (
+                      <>
+                        <a href={d.href}>{d.title}</a>
+                        {i < s.docs!.length - 1 && <span class="sep"> · </span>}
+                      </>
+                    ))
+                  : "No page of its own."}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+    ))}
+  </div>
+
+  <div class="prose wide memory">
+    <h2>Why the editor wants 32 GB</h2>
+    <p>
+      Put it together in the editor on a 16 GB Mac. There's the editor itself and every asset it has open. There's a
+      texture pool with no cap from graphics memory. Up to 7 shader workers start whenever shaders compile. Press Play and the editor runs a second copy of your level alongside the first. And
+      every graphics budget on this page comes out of the same 16 GB as all of that.
+    </p>
+    <p>
+      None of these defaults is wrong on its own. They're tuned for the machine Epic recommends, which has 32 GB of RAM
+      and a graphics card with 8 GB of its own (<a href={`${DOCS}/hardware-and-software-specifications-for-unreal-engine`}>Hardware
+      and Software Specifications</a>). On half that, they all want the same memory at once.
+    </p>
+
+    <h2>What we haven't confirmed</h2>
+    <ul>
+      <li>How many megabytes each shader compile worker uses in 5.8.</li>
+      <li>How many megabytes a Lumen surface cache atlas takes at each size.</li>
+      <li>How many bytes a virtual shadow map page takes, and so the pool's size in megabytes.</li>
+      <li>What an Apple M4 reports to the engine as its graphics memory, which the texture pool's cap is based on.</li>
+    </ul>
+    <p>When we've measured them, this page will say so, with the numbers.</p>
+
+    <h2>Before you change anything</h2>
+    <p>
+      Every setting here trades memory for something you can see or feel: blurrier textures, softer or shorter
+      shadows, flatter lighting, slower shader compiles. Change one at a time, and measure before and after, so you know
+      what each change bought you.
+    </p>
+
+    <h2>What we're doing about it</h2>
+    <p>
+      We haven't changed any of these defaults yet, so this page doesn't claim to save a single megabyte. When we do,
+      each change will be measured before and after with <a href="/charts/salvage-soundings/"><code>salvage
+      soundings</code></a>, using <a href="/charts/capturing-memory-runs/">the capture recipe</a>, and the numbers will
+      go on the <a href="/soundings/">soundings page</a>. That work is <a href="/#lighter-unreal">Lighter Unreal</a>:
+      getting Unreal games and the editor to fit the machines people already have.
+    </p>
+  </div>
+</Page>
+<style>
+  .memory .lede {
+    font-size: var(--step-1);
+    line-height: 1.55;
+  }
+  .summary th[scope="row"] {
+    font-stretch: 100%;
+    font-weight: 600;
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
+    border-bottom: 2px solid var(--rule);
+    vertical-align: top;
+  }
+  .summary th[scope="row"] a {
+    color: var(--text);
+    text-decoration-color: var(--accent);
+  }
+  .summary .num {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--mark);
+    white-space: nowrap;
+  }
+  .summary .never {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ---- One section per pool ---- */
+  .pools {
+    margin-top: var(--s-7);
+    max-width: 62rem;
+  }
+  .pool {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: var(--s-6);
+    padding-block: var(--s-7);
+    border-top: 2px solid var(--rule);
+    scroll-margin-top: var(--s-5);
+  }
+  .pool header {
+    align-self: start;
+    position: sticky;
+    top: var(--s-5);
+  }
+  .pool h2 {
+    font-stretch: var(--stretch-hull);
+    font-weight: 800;
+    font-size: var(--step-2);
+    line-height: 1.12;
+    margin: 0;
+  }
+  .mark {
+    margin: var(--s-4) 0 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .mark .value {
+    font-stretch: var(--stretch-hull);
+    font-weight: 850;
+    font-size: var(--step-4);
+    line-height: 1;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+  .mark .note {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--muted);
+    margin-top: var(--s-2);
+  }
+  .text > p {
+    margin: 0 0 var(--s-4);
+    max-width: var(--measure);
+  }
+  .plain {
+    font-size: var(--step-1);
+    line-height: 1.5;
+  }
+  .flat {
+    font-weight: 600;
+    color: var(--mark);
+    padding: var(--s-3) 0;
+    border-block: 1px solid var(--rule);
+  }
+
+  /* Defaults by quality level, read like draft marks: a row of numbers with
+     Epic, the default, painted in. */
+  .ladder {
+    list-style: none;
+    margin: var(--s-5) 0 var(--s-5);
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    border-bottom: 2px solid var(--text);
+    max-width: var(--measure);
+  }
+  .ladder li {
+    flex: 1 1 0;
+    min-width: 4.25rem;
+    padding: var(--s-2) var(--s-3);
+  }
+  .ladder .level {
+    display: block;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .ladder .v {
+    display: block;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: var(--step-1);
+  }
+  .ladder .epic {
+    background: var(--accent);
+    color: var(--ground);
+  }
+  .ladder .epic .level {
+    color: inherit;
+    font-weight: 700;
+  }
+  .ladder .unit {
+    flex: 0 0 100%;
+    padding: var(--s-1) var(--s-3);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    order: 99;
+    min-width: 0;
+  }
+  .unverified {
+    font-size: var(--step--1);
+    border-left: 3px solid var(--mark);
+    padding-left: var(--s-4);
+  }
+  .unverified strong {
+    color: var(--mark);
+  }
+  .facts {
+    margin: var(--s-5) 0 0;
+    font-size: var(--step--1);
+    max-width: var(--measure);
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding-block: var(--s-2);
+    border-top: 1px solid var(--rule);
+  }
+  .facts dt {
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .facts code,
+  .memory code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+  }
+  .sep {
+    color: var(--muted);
+  }
+  .settings-note {
+    display: block;
+    color: var(--muted);
+    margin-top: var(--s-1);
+  }
+  @media (max-width: 760px) {
+    .pool {
+      grid-template-columns: 1fr;
+      gap: var(--s-4);
+      padding-block: var(--s-6);
+    }
+    .pool header {
+      position: static;
+    }
+    .facts > div {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+  }
+</style>
