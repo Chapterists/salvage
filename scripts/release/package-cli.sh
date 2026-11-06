@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Packages built binaries into a release archive under dist/.
+# Packages the salvage command into a release archive under dist/.
 #
-#   scripts/package-release.sh <name> <version> <target>...
+#   scripts/release/package-cli.sh <name> <version> <target>...
 #
 # macos-*   lipo the targets into one universal binary, archive as .tar.gz
 # windows-* the single target's salvage.exe, archive as .zip
@@ -14,7 +14,7 @@ version="${2:?usage: $0 <name> <version> <target>...}"
 shift 2
 [ "$#" -ge 1 ] || { echo "package-release: no targets given" >&2; exit 2; }
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd "$(dirname "$0")/../.." && pwd)"
 base="salvage-$version-$name"
 stage="$root/dist/$base"
 rm -rf "$stage"
