@@ -14,6 +14,7 @@ pub mod lldb;
 pub mod probe;
 pub mod project;
 pub mod soundings;
+pub mod trim;
 pub mod ui;
 pub mod units;
 pub mod version;

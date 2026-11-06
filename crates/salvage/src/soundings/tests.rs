@@ -7,6 +7,10 @@ const BEFORE: &str = include_str!("../../tests/fixtures/harbor-before.memreport"
 const AFTER: &str = include_str!("../../tests/fixtures/harbor-after.memreport");
 const LLM: &str = include_str!("../../tests/fixtures/LLM_harbor.csv");
 const LLM_PLATFORM: &str = include_str!("../../tests/fixtures/LLMPlatform_harbor.csv");
+const LLM_NESTED: &str = include_str!("../../tests/fixtures/LLM_nested.csv");
+const LLM_ADDRESS_SPACE: &str = include_str!("../../tests/fixtures/LLMPlatform_addressspace.csv");
+const LLM_DEFAULT_ADDRESS_SPACE: &str = include_str!("../../tests/fixtures/LLM_addressspace.csv");
+const FILTERED: &str = include_str!("../../tests/fixtures/filtered-sections.memreport");
 
 fn parse(name: &str, text: &str) -> Sounding {
     Sounding::parse(Path::new(name), text).unwrap()
@@ -183,7 +187,10 @@ fn knobs_match_common_systems() {
     );
     assert_eq!(setting("Shadow"), Some("r.Shadow.Virtual.MaxPhysicalPages"));
     assert_eq!(setting("VirtualTexture"), Some("r.VT.PoolSizeScale"));
-    assert_eq!(setting("RenderTargets"), Some("r.RenderTargetPoolMin"));
+    assert_eq!(
+        setting("RenderTargets"),
+        Some("r.LumenScene.SurfaceCache.AtlasSize")
+    );
     assert_eq!(setting("GPUScene"), None);
 }
 
@@ -341,4 +348,80 @@ fn the_verdict_wraps_to_the_terminal_width() {
         joined,
         "To ride under 12 GB, trim 1.1 GB. Biggest levers: Textures in memory (1.8 GB), Render target pool (1.2 GB)."
     );
+}
+
+#[test]
+fn only_full_lists_count_toward_totals() {
+    let run = parse("filtered.memreport", FILTERED);
+    let total = |name: &str| {
+        run.pools
+            .iter()
+            .filter(|p| p.view == View::Totals && p.name == name)
+            .map(|p| p.bytes)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        total("Textures in memory"),
+        [mib(50.0)],
+        "listtextures nonvt is a subset"
+    );
+    assert_eq!(
+        total("Objects and their resources"),
+        [mib(70.0) + mib(80.0)],
+        "class= lists don't count"
+    );
+    assert_eq!(total("Render target pool"), [mib(1800.0)]);
+    assert!(
+        total("RHI tracked resources").is_empty(),
+        "0 MB means untracked, not empty"
+    );
+    assert_eq!(
+        run.pools_in(View::Objects).len(),
+        2,
+        "classes from the full list only"
+    );
+    assert!(run.pools_in(View::Gpu).is_empty());
+    assert_eq!(run.labels, ["Mac", "Development", "MacEditor"]);
+}
+
+#[test]
+fn llm_tags_keep_negatives_and_skip_children() {
+    let run = parse("LLM_nested.csv", LLM_NESTED);
+    assert_eq!(run.labels, ["2 samples"]);
+    let names: Vec<&str> = run.pools.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["Untagged", "Textures", "Meshes", "Audio", "RenderTargets"]
+    );
+    assert_eq!(
+        pool(&run, View::Llm, "Audio").bytes,
+        0,
+        "a tiny negative counts as zero"
+    );
+    assert_eq!(pool(&run, View::Llm, "Audio").peak, Some(mib(80.0)));
+}
+
+#[test]
+fn address_space_totals_fall_back_to_tracked() {
+    let run = parse("LLMPlatform_addressspace.csv", LLM_ADDRESS_SPACE);
+    assert_eq!(run.kind, Kind::LlmPlatform);
+    assert_eq!(run.footprint, Some(mib(4700.25)));
+    assert_eq!(run.peak, Some(mib(4700.25)));
+    assert!(run.labels.iter().any(|l| l.contains("address space")));
+    assert!(
+        run.pools
+            .iter()
+            .all(|p| !["Total", "Untracked", "OSAvailable"].contains(&p.name.as_str()))
+    );
+    assert_eq!(pool(&run, View::Llm, "Metal Textures").bytes, mib(1700.0));
+}
+
+#[test]
+fn the_default_tracker_csv_is_not_taken_for_the_platform_one() {
+    // On macOS the default tracker's CSV has an address-space Total as well.
+    let run = parse("LLM_addressspace.csv", LLM_DEFAULT_ADDRESS_SPACE);
+    assert_eq!(run.kind, Kind::Llm);
+    assert_eq!(run.peak, Some(mib(95.5)));
+    assert!(run.labels.iter().any(|l| l.contains("LLMPlatform")));
+    assert_eq!(pool(&run, View::Llm, "UObject").bytes, mib(210.0));
 }
