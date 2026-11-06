@@ -7,13 +7,15 @@ interface Props {
   title: string;
   dek?: string;
   description?: string;
+  /** A smaller title, for long ones such as chart names. */
+  compact?: boolean;
 }
-const { title, dek, description } = Astro.props;
+const { title, dek, description, compact = false } = Astro.props;
 ---
 <Base title={title} description={description ?? dek}>
   <section class="band">
     <div class="wrap">
-      <h1 class="hull">{title}</h1>
+      <h1 class:list={["hull", { compact }]}>{title}</h1>
       {dek && <p class="dek">{dek}</p>}
     </div>
   </section>
@@ -31,6 +33,10 @@ const { title, dek, description } = Astro.props;
   h1 {
     font-size: var(--step-5);
     margin: 0;
+  }
+  h1.compact {
+    font-size: var(--step-4);
+    max-width: 18ch;
   }
   .dek {
     font-size: var(--step-1);

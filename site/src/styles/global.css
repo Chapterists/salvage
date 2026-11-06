@@ -147,10 +147,50 @@ a:hover {
   margin-top: var(--s-5);
   margin-bottom: var(--s-5);
 }
+.prose pre:not(.astro-code) {
+  background: var(--code-bg);
+  color: var(--code-text);
+}
 .prose pre code {
   background: none;
   padding: 0;
   font-size: inherit;
+}
+
+/* Chart pages: prose that makes room for terminal output, with the reading
+   text still held to a comfortable measure. */
+.prose.wide {
+  max-width: 52rem;
+}
+.prose.wide > :is(p, ul, ol, h2, h3, dl) {
+  max-width: var(--measure);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  margin-block: var(--s-5);
+}
+.prose th {
+  text-align: left;
+  font-stretch: var(--stretch-sign);
+  font-weight: 750;
+  padding: 0 var(--s-4) var(--s-3) 0;
+  border-bottom: 2px solid var(--text);
+  vertical-align: bottom;
+}
+.prose td {
+  padding: var(--s-3) var(--s-4) var(--s-3) 0;
+  border-bottom: 2px solid var(--rule);
+  vertical-align: top;
+}
+@media (max-width: 700px) {
+  /* Wide tables scroll sideways on their own instead of the page. */
+  .prose table {
+    display: block;
+    overflow-x: auto;
+  }
 }
 
 /* Code highlighting (Shiki css-variables theme) */

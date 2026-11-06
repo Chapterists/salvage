@@ -1,0 +1,147 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import one from "../../examples/soundings-memreport.txt?raw";
+import two from "../../examples/soundings-diff.txt?raw";
+import llm from "../../examples/soundings-llm.txt?raw";
+
+// The settings soundings suggests, matched on a pool's name.
+const knobs = [
+  ["Lumen", "sg.GlobalIlluminationQuality"],
+  ["Nanite", "r.Nanite.Streaming.StreamingPoolSize"],
+  ["Shadow", "r.Shadow.Virtual.MaxPhysicalPages"],
+  ["Virtual textures", "r.VT.PoolSizeScale"],
+  ["Distance fields", "r.GenerateMeshDistanceFields"],
+  ["Skin cache", "r.SkinCache.SceneMemoryLimitInMB"],
+  ["Render targets", "r.RenderTargetPoolMin"],
+  ["Textures", "r.Streaming.PoolSize"],
+];
+const sample = "The sample capture from Salvage's own tests: a made-up level called Harbor, not a measurement of a real game.";
+---
+<Page
+  title="See where a game's memory goes"
+  compact
+  description="How to run salvage soundings on a memreport or LLM CSV, and how to read the draft, the targets and the pools."
+  dek="salvage soundings reads a memory capture from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. It measures. It doesn't change your game or save any memory by itself."
+>
+  <div class="prose wide">
+    <h2>What it reads</h2>
+    <p>Soundings reads two kinds of capture, and tells them apart by what's inside:</p>
+    <ul>
+      <li>
+        <strong>A memreport</strong>, written by the <code>memreport</code> console command: a snapshot of process
+        memory, GPU resources by rendering system, textures, render targets and the biggest object classes.
+      </li>
+      <li>
+        <strong>An LLM CSV</strong>, written when you launch with <code>-llmcsv</code>: memory per LLM tag, sampled
+        through the run, so it has peaks as well as end values. Both <code>LLM_*.csv</code> and <code>LLMPlatform_*.csv</code> work.
+      </li>
+    </ul>
+    <p>
+      Neither comes from a Shipping build. <a href="/charts/capturing-memory-runs/">Capture memory runs you can
+      compare</a> covers how to take them so two runs mean something side by side.
+    </p>
+
+    <h2>One capture</h2>
+    <Terminal command="salvage soundings harbor-before.memreport" output={one} caption={sample} />
+    <p>Read it top to bottom:</p>
+    <ul>
+      <li>
+        <strong>Draft</strong> is the number the run is judged by: its peak process memory, or its memory at capture
+        time when there's no peak. For an LLM CSV, it's the peak of the total column.
+      </li>
+      <li>
+        <strong>Against smaller machines</strong> takes each machine size, keeps 25% back for the operating system
+        and everything else, and compares the draft with what's left. An 8 GB machine leaves a 6 GB budget. Each row
+        says how much to trim to fit, or how much is spare.
+      </li>
+      <li>
+        <strong>The pools</strong> come in views: headline totals, GPU resources by system, LLM tags and object
+        classes. Views overlap, because a texture is an object, a GPU resource and a texture all at once. Compare
+        pools within a view and never add views together. The percentages are shares of the draft.
+      </li>
+      <li>
+        <strong>Worth a look</strong> flags GPU systems and LLM tags of 1 GB or more, or 15% of the draft or more,
+        with the setting that usually sizes them. Headline totals are flagged too when a setting sizes them, such as
+        textures and the render target pool.
+      </li>
+      <li>
+        <strong>The last line</strong> takes the biggest machine the run doesn't fit, says how much to trim to fit it,
+        and names the biggest flagged pools.
+      </li>
+    </ul>
+    <p>The settings it suggests, matched on the pool's name:</p>
+    <table>
+      <thead><tr><th scope="col">Pool</th><th scope="col">Setting</th></tr></thead>
+      <tbody>
+        {knobs.map(([pool, setting]) => (
+          <tr><td>{pool}</td><td><code>{setting}</code></td></tr>
+        ))}
+      </tbody>
+    </table>
+    <p>
+      A suggestion is a starting point, not a fix. Lower a setting, capture again, and compare the two runs to see what
+      it really changed.
+    </p>
+
+    <h2>Two captures</h2>
+    <p>Give it two captures of the same kind and it shows what changed from the first to the second.</p>
+    <Terminal
+      command="salvage soundings harbor-before.memreport harbor-after.memreport"
+      output={two}
+      caption="Both captures are made-up samples from Salvage's own tests. The 2.6 GB drop is invented to show the layout; nobody measured it."
+    />
+    <p>
+      Changes are listed biggest first, whichever way they go. A pool that only exists in one run shows
+      as <code>new</code> or <code>gone</code>. Comparing a memreport with an LLM CSV is an error: the two measure
+      different things.
+    </p>
+
+    <h2>An LLM CSV</h2>
+    <Terminal command="salvage soundings --top 6 LLM_harbor.csv" output={llm} caption={sample} />
+    <p>
+      The LLM CSV only counts memory LLM tracked. The <code>LLMPlatform_*.csv</code> from the same run also counts what
+      LLM can't attribute, so its draft is the bigger and more honest total.
+    </p>
+
+    <h2>Options</h2>
+    <table>
+      <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>--target GB</code></td><td>Machine size to measure against. Repeat it for several. The default is 8, 12 and 16.</td></tr>
+        <tr><td><code>--headroom PERCENT</code></td><td>Share of each machine kept back for the operating system and other apps. The default is 25. That's a rule of thumb, not an Epic number: raise it if players will have a browser open.</td></tr>
+        <tr><td><code>--top N</code></td><td>Rows to show in each section. The default is 10.</td></tr>
+        <tr><td><code>--require GB</code></td><td>Exit with 1 unless the capture (the second one, when there are two) fits a machine of that size. For CI.</td></tr>
+        <tr><td><code>--json</code></td><td>Print JSON instead.</td></tr>
+        <tr><td><code>--color</code></td><td><code>auto</code>, <code>always</code> or <code>never</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>In CI</h2>
+    <p>
+      To fail a build when a test run stops fitting an 8 GB machine, capture a memreport in your test and check it:
+    </p>
+    <pre><code>salvage soundings Saved/Profiling/MemReports/run.memreport --require 8</code></pre>
+    <p>
+      Soundings exits with 0 when the run fits, 1 when it doesn't, and 2 when it can't read a capture or the capture
+      has no process memory total to judge.
+    </p>
+
+    <h2>JSON</h2>
+    <p>
+      <code>--json</code> prints the parsed capture with its <code>draft</code>, <code>targets</code> and <code>oversized</code> pools, or for two
+      captures, <code>before</code>, <code>after</code>, <code>changes</code> and <code>draft_delta</code>. Sizes are in bytes. <code>schema</code> is the version of
+      the layout, and goes up if it changes in a way that breaks readers.
+    </p>
+
+    <h2>What it doesn't do</h2>
+    <ul>
+      <li>It doesn't save memory. It tells you where memory goes, so you can decide what to change and check what the change did.</li>
+      <li>It doesn't read Unreal Insights traces. For allocation-level detail, use Insights.</li>
+      <li>It doesn't know your players' machines. The targets and headroom are yours to set.</li>
+    </ul>
+
+    <GetSalvage />
+  </div>
+</Page>

@@ -1,0 +1,19 @@
+---
+// How to get the salvage command. This is the one place on the site that says
+// how to install it: when there's a release, change it here (and in the
+// README's "Get it" section).
+---
+<section class="get" aria-labelledby="get-salvage">
+  <h2 id="get-salvage">Get it</h2>
+  <p>
+    There's no release yet, so you build <code>salvage</code> from source. You need Git and a stable Rust toolchain
+    (<a href="https://rustup.rs">rustup.rs</a> installs one). Building takes a minute or two the first time.
+  </p>
+  <pre><code>git clone https://github.com/Chapterists/salvage.git
+cd salvage
+cargo install --locked --path crates/salvage</code></pre>
+  <p>
+    That puts <code>salvage</code> in <code>~/.cargo/bin</code>. To try it without installing, run it from the
+    repository with <code>cargo run -p salvage -- doctor</code>. To remove it, run <code>cargo uninstall salvage</code>.
+  </p>
+</section>

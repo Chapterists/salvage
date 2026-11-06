@@ -1,34 +1,111 @@
 ---
 import Page from "../../layouts/Page.astro";
+
+const charts = [
+  {
+    href: "/charts/salvage-doctor/",
+    title: "Check a Mac for Unreal",
+    tool: "salvage doctor",
+    what: "Run 12 checks on Xcode, Metal, disk, caches, memory and the debugger, and read what they say.",
+  },
+  {
+    href: "/charts/salvage-soundings/",
+    title: "See where a game's memory goes",
+    tool: "salvage soundings",
+    what: "Read a memreport or LLM CSV, see how a run sits against 8, 12 and 16 GB machines, and compare two runs.",
+  },
+  {
+    href: "/charts/capturing-memory-runs/",
+    title: "Capture memory runs you can compare",
+    tool: "memreport and -llmcsv",
+    what: "Take memory captures from a game so that two runs still mean something side by side.",
+  },
+];
 ---
 <Page
   title="Charts"
-  dek="A chart shows you how to do one specific thing: set something up, measure it, or fix it."
+  dek="A chart shows you how to do one specific thing: set something up, measure it, or fix it. Each one is written alongside the tool it describes."
 >
+  <ol class="charts">
+    {charts.map((c) => (
+      <li>
+        <a href={c.href}>
+          <span class="title hull">{c.title}</span>
+          <span class="tool">{c.tool}</span>
+        </a>
+        <p>{c.what}</p>
+      </li>
+    ))}
+  </ol>
   <div class="prose">
-    <p class="empty">There are no charts yet.</p>
     <p>
-      Each chart will be written alongside the tool or fix it describes, so it only ever describes something that
-      exists and has been tried. Until then there's nothing honest to write a guide about.
-    </p>
-    <h2>What a chart will look like</h2>
-    <ul>
-      <li>One task per chart, named for the job: what you'll have when you're done.</li>
-      <li>What you need before you start: hardware, operating system, engine version.</li>
-      <li>Every command you need to run, in order, and what you should see after each one.</li>
-      <li>How to undo it.</li>
-      <li>Why it works, briefly, so you can adapt it when your setup differs.</li>
-    </ul>
-    <p>
-      If you'd like to write one when the time comes, start with the <a href="/contributing/">contributing guide</a>.
+      Every chart says what you need before you start, gives every command in order with what you should see after
+      it, and explains why it works, so you can adapt it when your setup differs. To write one, start with
+      the <a href="/contributing/">contributing guide</a>.
     </p>
   </div>
 </Page>
 <style>
-  .empty {
+  .charts {
+    list-style: none;
+    margin: 0 0 var(--s-7);
+    padding: 0;
+    max-width: 52rem;
+    counter-reset: chart;
+  }
+  .charts li {
+    counter-increment: chart;
+    position: relative;
+    padding: var(--s-5) 0 var(--s-5) 4rem;
+    border-top: 2px solid var(--rule);
+  }
+  .charts li:last-child {
+    border-bottom: 2px solid var(--rule);
+  }
+  .charts li::before {
+    content: counter(chart, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: var(--s-5);
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    color: var(--accent);
+    line-height: 1.6;
+  }
+  .charts a {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem var(--s-4);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .title {
     font-size: var(--step-2);
-    font-stretch: var(--stretch-sign);
-    font-weight: 750;
-    line-height: 1.25;
+    line-height: 1.15;
+  }
+  .charts a:hover .title {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 0.18em;
+  }
+  .tool {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--link);
+  }
+  .charts p {
+    margin: var(--s-2) 0 0;
+    max-width: var(--measure);
+    color: var(--muted);
+  }
+  @media (max-width: 600px) {
+    .charts li {
+      padding-left: 2.75rem;
+    }
+    .charts li::before {
+      font-size: var(--step-0);
+    }
   }
 </style>

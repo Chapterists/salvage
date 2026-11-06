@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "salvage": "0.1.0",
+  "command": "doctor",
+  "ok": true,
+  "counts": {
+    "pass": 10,
+    "warn": 2,
+    "fail": 0,
+    "skip": 0
+  },
+  "platform": {
+    "os": "macos",
+    "os_version": "27.2",
+    "arch": "aarch64",
+    "cpu": "Apple M4",
+    "memory": 17179869184
+  },
+  "engine": {
+    "root": "/Users/Shared/Epic Games/UE_5.8",
+    "version": "5.8.4",
+    "installed_build": true,
+    "found_by": "launcher"
+  },
+  "project": null,
+  "checks": [
+    {
+      "id": "xcode",
+      "group": "toolchain",
+      "title": "Xcode",
+      "status": "pass",
+      "summary": "Xcode 27.2 (27B52), within the engine's range (15.2.0 to 27.9.0)",
+      "details": [
+        "Epic builds this engine with Xcode 26.1.1."
+      ]
+    },
+    {
+      "id": "lldbinit",
+      "group": "debugging",
+      "title": "~/.lldbinit",
+      "status": "warn",
+      "summary": "Missing, so FString, TArray and friends show up as raw memory in the debugger",
+      "fix": {
+        "hint": "Load Unreal's formatters:",
+        "command": "echo 'command script import \"/Users/Shared/Epic Games/UE_5.8/Engine/Extras/LLDBDataFormatters/UEDataFormatters_2ByteChars.py\"' >> ~/.lldbinit"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+
+  salvage soundings  LLM_harbor.csv
+  LLM CSV · 4 samples
+
+  Draft  6.8 GB at peak (6.6 GB at the end)
+         Memory LLM tracked. The LLMPlatform CSV from the same run also counts
+         what LLM can't see.
+
+  Against smaller machines  25% kept free for the OS and other apps
+    ✗    8 GB  budget 6 GB     trim 866 MB
+    ✓   12 GB  budget 9 GB     2.2 GB spare
+    ✓   16 GB  budget 12 GB    5.2 GB spare
+
+  LLM tags
+    ! Textures         1.8 GB  █████▍                 27%  peak 1.9 GB
+      Meshes           901 MB  ██▋                    13%  peak 905 MB
+      RenderTargets    880 MB  ██▌                    13%  peak 905 MB
+      Lumen            525 MB  █▌                      7%  peak 540 MB
+      UObject          466 MB  █▍                      7%  peak 469 MB
+      Nanite           404 MB  █▏                      6%  peak 410 MB
+      and 7 more (--top to see them)
+
+  Worth a look
+    !  Textures is 1.8 GB, 27% of the draft
+       → Try r.Streaming.PoolSize. Texture streaming pool, in MB.
+
+  To ride under 8 GB, trim 866 MB. Biggest levers: Textures (1.8 GB).
+

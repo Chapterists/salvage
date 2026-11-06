@@ -1,0 +1,44 @@
+
+  salvage soundings  harbor-before.memreport
+  memreport · Mac · Development · captured on a 16 GB machine
+
+  Draft  10.1 GB at peak (9.4 GB at capture)
+
+  Against smaller machines  25% kept free for the OS and other apps
+    ✗    8 GB  budget 6 GB     trim 4.1 GB
+    ✗   12 GB  budget 9 GB     trim 1.1 GB
+    ✓   16 GB  budget 12 GB    1.9 GB spare
+
+  Headline numbers
+    Different views of the same memory; they overlap, so don't add them up.
+      Objects and their resources    3.8 GB  ███████▋               38%
+      RHI tracked resources          3.6 GB  ███████                35%
+    ! Textures in memory             1.8 GB  ███▋                   18%
+    ! Render target pool             1.2 GB  ██▍                    12%
+
+  GPU resources by system
+      Lumen             742 MB  █▍                      7%
+      Nanite            619 MB  █▎                      6%
+      Shadow            431 MB  ▉                       4%
+      DistanceFields    288 MB  ▌                       3%
+      VirtualTexture    210 MB  ▍                       2%
+      GPUScene         96.4 MB  ▏                       1%
+
+  Biggest object classes
+    Object memory plus the resources each class owns.
+      Texture2D       2.1 GB  ████▏                  21%  2210 objects
+      StaticMesh      887 MB  █▊                      9%  1804 objects
+      SoundWave       393 MB  ▊                       4%  612 objects
+      SkeletalMesh    184 MB  ▍                       2%  48 objects
+      AnimSequence    148 MB  ▎                       1%  930 objects
+      Material        6.6 MB                          0%  402 objects
+
+  Worth a look
+    !  Textures in memory is 1.8 GB, 18% of the draft
+       → Try r.Streaming.PoolSize. Texture streaming pool, in MB.
+    !  Render target pool is 1.2 GB, 12% of the draft
+       → Try r.RenderTargetPoolMin. MB the render target pool keeps before
+         releasing unused targets.
+
+  To ride under 12 GB, trim 1.1 GB. Biggest levers: Textures in memory (1.8 GB), Render target pool (1.2 GB).
+

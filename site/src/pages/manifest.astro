@@ -1,80 +1,137 @@
 ---
 import Page from "../layouts/Page.astro";
+
+const tools = [
+  {
+    name: "salvage doctor",
+    workstream: "Unreal on Mac",
+    what: "Runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix.",
+    runs: "macOS, with all 12 checks. Windows and Linux, with the 6 that aren't Mac-specific.",
+    tested: "Built and tested on macOS, Windows and Linux in CI. Run against Unreal Engine 5.8 on an Apple M4 Mac.",
+    changes: "Nothing. It reads your setup and prints fixes for you to run.",
+    chart: "/charts/salvage-doctor/",
+    chartTitle: "Check a Mac for Unreal",
+  },
+  {
+    name: "salvage soundings",
+    workstream: "Lighter Unreal",
+    what: "Reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed.",
+    runs: "macOS, Windows and Linux.",
+    tested: "Built and tested on macOS, Windows and Linux in CI, against the sample captures in its tests.",
+    changes: "Nothing. It reads capture files. It measures memory; it doesn't save any.",
+    chart: "/charts/salvage-soundings/",
+    chartTitle: "See where a game's memory goes",
+  },
+];
 ---
 <Page
   title="Manifest"
-  dek="Every Salvage tool: what it does, where it runs, and what it changes. The list is empty because nothing has shipped."
+  dek="Every Salvage tool: what it does, where it runs, and what it changes. Two tools are in the repository. Neither has a release yet."
 >
-  <table class="ledger">
-    <caption class="visually-hidden">Salvage tools</caption>
-    <thead>
-      <tr>
-        <th scope="col">Tool</th>
-        <th scope="col">Workstream</th>
-        <th scope="col">What it does</th>
-        <th scope="col">Soundings</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td colspan="4">Nothing has shipped yet.</td>
-      </tr>
-    </tbody>
-  </table>
+  <ol class="manifest">
+    {tools.map((t) => (
+      <li>
+        <div class="head">
+          <h2>{t.name}</h2>
+          <p class="stream">{t.workstream}</p>
+        </div>
+        <div class="body">
+          <p class="what">{t.what}</p>
+          <dl>
+            <div><dt>Runs on</dt><dd>{t.runs}</dd></div>
+            <div><dt>Tested</dt><dd>{t.tested}</dd></div>
+            <div><dt>Changes</dt><dd>{t.changes}</dd></div>
+            <div><dt>Status</dt><dd>In the repository. No release yet, so you build it from source.</dd></div>
+          </dl>
+          <p class="chart">The chart: <a href={t.chart}>{t.chartTitle}</a></p>
+        </div>
+      </li>
+    ))}
+  </ol>
 
   <div class="prose">
     <h2>What goes on the manifest</h2>
-    <p>A tool goes on this list when it has shipped and been measured. Each entry will say:</p>
+    <p>A tool goes on this list when it's in the repository and does what it says. Each entry says:</p>
     <ul>
-      <li>What it does, in a sentence, and which workstream it belongs to.</li>
-      <li>Which platforms and engine versions it has been tested on.</li>
-      <li>Its <a href="/soundings/">soundings</a>: what it changed, measured before and after on named machines.</li>
-      <li>How to remove it and put things back the way they were.</li>
+      <li>What it does, in a sentence or two, and which workstream it belongs to.</li>
+      <li>Where it runs and where it has been tested.</li>
+      <li>What it changes on your machine or in your project. Both tools so far only read.</li>
+      <li>
+        For a tool that changes memory use, its <a href="/soundings/">soundings</a>: what it changed, measured before
+        and after on named machines. Neither tool here changes memory use, so neither has soundings of its own.
+      </li>
     </ul>
-
-    <h2>What's being looked at</h2>
-    <h3>Lighter Unreal</h3>
     <p>
-      Where Unreal Engine games and the editor spend memory, and how much of it the work actually needs. Memory comes
-      first because it's the part of a machine that's hardest to afford right now.
+      Both tools are subcommands of one program, <code>salvage</code>. To remove it,
+      run <code>cargo uninstall salvage</code>.
     </p>
-    <h3>Unreal on Mac</h3>
-    <p>Where developing with Unreal Engine on macOS is slow or awkward, and what would make it fast and pleasant.</p>
     <p>
-      Fixes that belong in the engine itself will go upstream to Epic Games as pull requests, so they won't appear on
-      this list as tools. The <a href="/logbook/">logbook</a> will record them.
+      Fixes that belong in the engine itself go upstream to Epic Games as pull requests, so they won't appear on this
+      list as tools. The <a href="/logbook/">logbook</a> will record them.
     </p>
   </div>
 </Page>
 <style>
-  .ledger {
-    width: 100%;
+  .manifest {
+    list-style: none;
+    margin: 0 0 var(--s-8);
+    padding: 0;
     max-width: 62rem;
-    border-collapse: collapse;
-    font-size: var(--step--1);
-    margin-bottom: var(--s-4);
   }
-  th {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-align: left;
-    color: var(--muted);
-    padding: 0 var(--s-4) var(--s-3) 0;
-    border-bottom: 2px solid var(--text);
+  .manifest > li {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: var(--s-6);
+    padding-block: var(--s-6);
+    border-top: 2px solid var(--text);
   }
-  td {
-    padding: var(--s-5) 0;
-    border-bottom: 2px solid var(--rule);
+  .manifest > li + li {
+    border-top-color: var(--rule);
+  }
+  .head h2 {
     font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: var(--step-1);
+    line-height: 1.3;
+    margin: 0;
     color: var(--mark);
   }
-  @media (max-width: 600px) {
-    th:nth-child(3),
-    th:nth-child(4) {
-      display: none;
+  .stream {
+    margin: var(--s-2) 0 0;
+    font-stretch: var(--stretch-sign);
+    font-weight: 700;
+  }
+  .what {
+    margin: 0;
+    font-size: var(--step-1);
+    line-height: 1.5;
+  }
+  dl {
+    margin: var(--s-4) 0 var(--s-4);
+    font-size: var(--step--1);
+  }
+  dl > div {
+    display: grid;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding-block: var(--s-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  dt {
+    font-weight: 700;
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+  }
+  .chart {
+    margin: 0;
+    font-weight: 600;
+  }
+  @media (max-width: 760px) {
+    .manifest > li {
+      grid-template-columns: 1fr;
+      gap: var(--s-4);
     }
   }
 </style>

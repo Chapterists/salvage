@@ -17,8 +17,8 @@ const recent = (await logbookEntries()).slice(0, 3);
       <div class="above">
         <p class="sub">
           RAM is expensive right now, and high-end games keep asking for more of it. Salvage is open-source tools
-          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine. It's early, and
-          nothing has shipped yet.
+          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine. It's early: two tools are in the
+          repository, and there's no release yet.
         </p>
       </div>
       <div class="bow-cell">
@@ -71,7 +71,10 @@ const recent = (await logbookEntries()).slice(0, 3);
           A lighter is a barge that takes cargo off a ship so it can float into shallow water. Same job here: take
           load off the engine so big games fit on small machines.
         </p>
-        <p class="now">Right now we're measuring where the memory goes.</p>
+        <p class="now">
+          First tool: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
+          and shows where the memory goes, and whether the run fits 8, 12 and 16 GB machines.
+        </p>
       </div>
     </article>
 
@@ -84,7 +87,10 @@ const recent = (await logbookEntries()).slice(0, 3);
           Plenty of people build games on a Mac. The editor, the builds and the tools around them should feel like
           they belong there, not like they're putting up with it.
         </p>
-        <p class="now">Right now we're measuring where the time goes.</p>
+        <p class="now">
+          First tool: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
+          the things that make Unreal slow or broken, and says how to fix each one.
+        </p>
       </div>
     </article>
   </section>
@@ -121,11 +127,17 @@ const recent = (await logbookEntries()).slice(0, 3);
 
   <section class="deck wrap">
     <div>
-      <h2 class="hull">Early. Nothing has shipped.</h2>
+      <h2 class="hull">Two tools in the repo. No release yet.</h2>
       <p>
-        We're measuring where Unreal spends memory and where Mac development slows down, and deciding what to build
-        from what we find. When a tool ships, it goes on the <a href="/manifest/">manifest</a> with <a href="/soundings/">soundings</a>:
-        before-and-after measurements on real machines.
+        <code>salvage doctor</code> and <code>salvage soundings</code> are in the repository, and you
+        can <a href="/charts/salvage-doctor/#get-salvage">build them from source</a> today. There's nothing to download
+        yet.
+      </p>
+      <p>
+        Neither one saves memory by itself. Doctor finds what's wrong with a Mac's setup; soundings measures where a
+        game's memory goes. They're how we'll find what to fix, and how we'll check the fixes. When a change does cut
+        memory, it goes on the <a href="/manifest/">manifest</a> with its <a href="/soundings/">soundings</a>:
+        before-and-after numbers on real machines.
       </p>
     </div>
     <div class="log">
@@ -336,9 +348,17 @@ const recent = (await logbookEntries()).slice(0, 3);
     font-weight: 600;
   }
   .now {
-    color: var(--mark);
     font-weight: 600;
     margin-top: var(--s-4) !important;
+  }
+  .now a {
+    color: var(--mark);
+  }
+  .now code,
+  .deck code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    font-weight: 500;
   }
 
   /* ---- How it's built ---- */
