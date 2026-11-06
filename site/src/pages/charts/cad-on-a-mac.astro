@@ -1,0 +1,72 @@
+---
+import Page from "../../layouts/Page.astro";
+
+const EPIC = "https://dev.epicgames.com/documentation/en-us/unreal-engine";
+const MAYO = "https://github.com/fougue/mayo";
+---
+<Page
+  title="Bring CAD (STEP, IGES) into Unreal on a Mac"
+  compact
+  description="Unreal's Datasmith CAD importer doesn't run on macOS. How to get STEP and IGES files into Unreal on a Mac today: Epic's Mac exporters where your design tool has one, otherwise converting with Mayo, and what you give up."
+  dek="Unreal's Datasmith CAD importer reads STEP and IGES files directly, but not on a Mac. Here's the route that works today: convert with Mayo, an open-source CAD converter, and import the mesh. Here's what you give up, too."
+>
+  <div class="prose wide">
+    <h2>Why it doesn't just open</h2>
+    <p>Epic's <a href={`${EPIC}/datasmith-supported-software-and-file-types`}>Datasmith Supported Software and File Types</a> page lists the CAD formats the Datasmith CAD importer reads: 3DXML, IFC, IGES, JT, Parasolid, PLM XML and STEP. It also says that "all Datasmith importers in the Unreal Editor, are currently only available for Microsoft Windows platforms".</p>
+    <p>The Mac install agrees. In Unreal Engine 5.8.4 for Mac, the Datasmith CAD Importer plugin is only built for Windows and Linux, so it isn't there to turn on.</p>
+
+    <h2>If your design tool has a Mac exporter, start there</h2>
+    <p>Epic makes Datasmith exporters that run on macOS for three applications:</p>
+    <ul>
+      <li>Trimble SketchUp Pro 2019 to 2025</li>
+      <li>Graphisoft Archicad 23 to 28 (marked beta or experimental)</li>
+      <li>McNeel Rhinoceros 6, 7 and 8</li>
+    </ul>
+    <p>If your model lives in one of those, export from it. Datasmith brings across far more than a mesh conversion can, including <a href={`${EPIC}/using-datasmith-metadata-in-unreal-engine`}>metadata</a> from those applications.</p>
+    <p><strong>Unverified:</strong> we haven't tried this round trip on a Mac. In Unreal Engine 5.8.4 for Mac, the Datasmith Importer plugin, which reads exported <code>.udatasmith</code> files, does ship Mac binaries. But Epic's page says the importers are Windows-only, so check it with one of your own files before you rely on it.</p>
+
+    <h2>Otherwise, convert with Mayo</h2>
+    <p><a href={MAYO}>Mayo</a> is an open-source CAD viewer and converter built on Qt and OpenCascade, under the BSD 2-clause license. It reads STEP (AP203, AP214 and AP242), IGES, BREP and a long list of mesh formats, and writes glTF (including binary <code>.glb</code>), OBJ, STL and others. It comes with a command-line converter, <code>mayo-conv</code>, as well as the viewer.</p>
+    <p>Salvage doesn't add a tool here, because Mayo already does this job well.</p>
+
+    <h3>Get Mayo on a Mac</h3>
+    <p>Mayo's releases include Windows and Linux builds but not a Mac one, and there's no Homebrew package, so on a Mac you build it from source. Its <a href={`${MAYO}/wiki/Build-instructions-for-macOS`}>macOS build instructions</a> come down to:</p>
+    <pre><code>brew install cmake git qt@5 opencascade
+brew link qt@5 --force
+git clone https://github.com/fougue/mayo.git
+mkdir build-mayo && cd build-mayo
+cmake ../mayo
+cmake --build . --config Release</code></pre>
+    <p>That builds the viewer (<code>mayo.app</code>) and the converter (<code>mayo-conv</code>). Mayo's own CI builds it on macOS. The latest completed build on its main branch, from 26 October 2026, passed. Qt and OpenCascade are large downloads.</p>
+
+    <h3>Convert</h3>
+    <p>Open the file in Mayo and export it, or convert it from the command line. <code>mayo-conv</code> takes the files to open, then <code>-e</code> (or <code>--export</code>) with the file to write, and the extension picks the format:</p>
+    <pre><code>mayo-conv bracket.step -e bracket.glb</code></pre>
+    <p>Prefer glTF (<code>.glb</code>) to OBJ: Unreal can import a whole glTF scene into a level at once, and OBJ carries less.</p>
+    <p>Mayo turns curved CAD surfaces into triangles at one setting for the whole conversion. By default that's its Normal quality, with 1 mm chordal deflection and 20° angular deflection. To change it, use Mayo's options in the viewer. For <code>mayo-conv</code>, write its current settings to a file with <code>-w settings.ini</code>, edit the file, and pass it back with <code>-u settings.ini</code>.</p>
+
+    <h3>Import into Unreal</h3>
+    <p>Import the <code>.glb</code> through the Content Browser's Import button, or drag it in. For an assembly you want laid out in a level, use File, then Import Into Level. Epic's <a href={`${EPIC}/importing-gltf-files-into-unreal-engine`}>Importing glTF Files</a> page covers the options.</p>
+
+    <h2>What you give up</h2>
+    <ul>
+      <li>
+        <strong>Tessellation control inside Unreal.</strong> Datasmith imports CAD with Chord Tolerance, Max Edge Length and Normal Tolerance settings, and can <a href={`${EPIC}/retessellating-cad-geometry-in-unreal-engine`}>retessellate</a> individual meshes later from the original CAD surfaces, so you can import a whole scene coarse and refine the parts that matter. A converted file is already triangles. To change its density, convert it again.
+      </li>
+      <li>
+        <strong>Metadata.</strong> Datasmith carries metadata across from the design applications it supports. A conversion keeps only what glTF can hold, and we haven't checked what Mayo writes beyond the geometry.
+      </li>
+      <li>
+        <strong>Reimport.</strong> Datasmith can <a href={`${EPIC}/datasmith-reimport-workflow-in-unreal-engine`}>reimport</a> a changed source file into the same assets. With a conversion, you convert and import again.
+      </li>
+    </ul>
+    <p>For one-off parts, props and reference geometry, a good conversion is usually enough. For a large assembly you'll keep revising, the Windows importer, or a Mac exporter from the design tool, saves real time.</p>
+
+    <h2>What we haven't tried</h2>
+    <ul>
+      <li>We haven't built or run Mayo. There's no Mac release, and building it pulls in Qt and OpenCascade, which the Mac we used doesn't have, so this page has no real conversion output. The commands come from Mayo's build instructions and from its converter's own source.</li>
+      <li>We haven't tried the Mac Datasmith exporters, or importing a <code>.udatasmith</code> file on a Mac.</li>
+    </ul>
+    <p>If you try either, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> with what happened would help us make this page firmer.</p>
+  </div>
+</Page>
