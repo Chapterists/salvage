@@ -1,0 +1,51 @@
+# This repository is public. Anything internal, private, or secret must never
+# be committed. See scripts/check-public-safety.sh for the enforced rules.
+
+# --- Secrets & credentials -------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+*.provisionprofile
+id_rsa*
+id_ed25519*
+id_ecdsa*
+.netrc
+credentials.json
+service-account*.json
+*secret*.json
+*.secrets
+secrets/
+
+# --- Internal / company-only material -------------------------------------
+# Planning, notes, Linear exports, and anything else not meant for the public.
+internal/
+private/
+.internal/
+.private/
+.linear/
+*.linear.md
+notes/
+
+# --- Local AI / agent tooling ---------------------------------------------
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/memory/
+.orca/
+
+# --- OS / editor ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
