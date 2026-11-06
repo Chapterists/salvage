@@ -78,11 +78,11 @@ const stand = "Salvage's own test fixture: small stand-in types with the same na
         </div>
       ))}
     </dl>
-    <p>
-      It works alongside the formatters that ship with the engine. Where both cover a type, whichever loads last
-      wins. <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> checks your init file and tells you which
-      formatters it loads, if any.
-    </p>
+
+    <h2 id="epics-formatters-and-ours">Epic's formatters, and ours</h2>
+    <p>Unreal Engine ships LLDB formatters of its own, under Epic's license, in the engine's <code>Engine/Extras/LLDBDataFormatters</code> folder (<code>UEDataFormatters.py</code> and a variant for 2-byte characters). In 5.8.4 they cover <code>FString</code>, <code>FName</code>, <code>TArray</code>, <code>TMap</code>, <code>TSet</code>, <code>TWeakObjectPtr</code>, and Unreal's sparse, bit and chunked arrays.</p>
+    <p>Salvage's formatters overlap with Epic's on <code>FString</code>, <code>FName</code> and <code>TArray</code>. What they add is everything else in the list above: the shared, unique, weak and object pointers, soft references, <code>FText</code>, <code>TOptional</code>, <code>TVariant</code>, <code>FGuid</code>, <code>FGameplayTag</code> and the math types, as open source under the MIT license.</p>
+    <p>You can load both. If Epic's are already in your init file, keep them: they cover <code>TMap</code>, <code>TSet</code> and the rest, which Salvage's don't. <code>salvage lldb install</code> adds its line after any you already have, so where both cover a type, Salvage's loads last and wins. <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> checks your init file and tells you which formatters it loads.</p>
 
     <h2>How it was written</h2>
     <p>

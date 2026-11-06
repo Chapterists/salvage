@@ -147,6 +147,19 @@ salvage doctor --json</code></pre>
       </>
     ))}
 
+    <h2>Which versions Epic supports</h2>
+    <p>
+      Epic's <a href="https://dev.epicgames.com/documentation/unreal-engine/macos-development-requirements-for-unreal-engine">macOS
+      Development Requirements</a> page is the authority on which macOS and Xcode versions each engine release
+      supports. Doctor checks something more mechanical: the Xcode range the engine's own config accepts, which is
+      what the engine's SDK check enforces when you build.
+    </p>
+    <p>
+      The two can differ. For 5.8, Epic's page lists Xcode 26.0 as the minimum and 26.1.1 as recommended, and says
+      Xcode 26.4 isn't compatible. The engine's config accepts 15.2 to 27.9. If doctor passes but Epic's page says your
+      Xcode isn't supported, go by Epic's page.
+    </p>
+
     <h2>On Windows and Linux</h2>
     <p>
       Doctor runs there too, with six checks: the engine install, free space, spaces in paths, Zen and DDC, RAM and
@@ -156,8 +169,7 @@ salvage doctor --json</code></pre>
     <h2>JSON</h2>
     <p>
       <code>--json</code> prints the same report for scripts. <code>schema</code> is the version of the layout, and
-      goes up if it changes in a way that breaks readers. Each check has an <code>id</code>, a <code>status</code> (<code>pass</code>, <code>warn</code>, <code>fail</code> or <code>skip</code>), a <code>summary</code>,
-      and <code>details</code> and a <code>fix</code> when there are any. Memory is in bytes.
+      goes up if it changes in a way that breaks readers. Each check has an <code>id</code>, a <code>status</code> (<code>pass</code>, <code>warn</code>, <code>fail</code> or <code>skip</code>), a <code>summary</code>, and <code>details</code> and a <code>fix</code> when there are any. Memory is in bytes.
     </p>
     <Terminal
       command="salvage doctor --json"
