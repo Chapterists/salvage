@@ -127,8 +127,8 @@ const zoomMarks = [0.5, 1, 1.5, 2];
   <figcaption>
     <strong>Illustrative.</strong> The four memory budgets with fixed defaults in Unreal Engine 5.8.4 at Epic quality,
     drawn to scale and stacked: {totalMb.toLocaleString("en-US")} MB, about 1.9 GB. They're limits the engine
-    works within, not measurements of a running game. Virtual shadow maps and Lumen's surface cache live here too, but
-    we haven't confirmed their sizes in megabytes, so they aren't drawn. The rest of the hull is the game itself, the
+    works within, not measurements of a running game. Virtual shadow maps and Lumen's surface cache live here too.
+    They aren't drawn: the shadow page pool has been measured on one Mac (512 MB at Epic), but Lumen's atlas hasn't. The rest of the hull is the game itself, the
     engine, the operating system and your other apps, and that varies too much from game to game to draw.
   </figcaption>
 </figure>

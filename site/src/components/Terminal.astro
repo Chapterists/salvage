@@ -1,6 +1,6 @@
 ---
 // Real terminal output from a Salvage command, colored the way the CLI colors
-// it: ✓ passes, ! worth a look, ✗ to fix, → what to do. The text comes from
+// it: ✓ passes, ! worth a look, ✗ to fix, → what to do, ~ would change. The text comes from
 // files in src/examples/, captured with --color never.
 interface Props {
   /** The command that produced the output, shown as the first line. */
@@ -32,13 +32,14 @@ const paint = (line: string) => {
     .replace(/^(\s+)(✓)(?=\s)/, '$1<span class="g ok">$2</span>')
     .replace(/^(\s+)(!)(?=\s)/, '$1<span class="g warn">$2</span>')
     .replace(/^(\s+)(✗)(?=\s)/, '$1<span class="g bad">$2</span>')
-    .replace(/^(\s+)(–)(?=\s)/, '$1<span class="g dim">$2</span>')
+    .replace(/^(\s+)(–|·)(?=\s)/, '$1<span class="g dim">$2</span>')
+    .replace(/^(\s+)(~)(?=\s)/, '$1<span class="g warn">$2</span>')
     .replace(/(✓|✗)(?= (trim|\d))/g, (m) => `<span class="g ${m === "✓" ? "ok" : "bad"}">${m}</span>`)
     .replace(/(→)(?= )/g, '<span class="g accent">$1</span>')
     .replace(/[█▏▎▍▌▋▊▉]+/g, bar)
     .replace(/(−[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="ok">$1</span>')
     .replace(/(\+[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="bad">$1</span>')
-    .replace(/^(\s+)(salvage (?:doctor|soundings))/, '$1<strong>$2</strong>');
+    .replace(/^(\s+)(salvage (?:doctor|soundings|trim))/, '$1<strong>$2</strong>');
   return html;
 };
 const body = output.replace(/^\n+|\s+$/g, "").split("\n").map(paint).join("\n");
