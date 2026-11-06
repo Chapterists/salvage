@@ -1,4 +1,4 @@
-Salvage is Chapterists' open-source toolbox: the tools we use to make our stories. This release is the `salvage` command, whose first tools are for Unreal Engine: `salvage doctor`, `salvage soundings` and `salvage lldb`.
+Salvage is Chapterists' open-source toolbox: the tools we use to make our stories. This release is the `salvage` command, which checks, measures and sets up Unreal Engine work: `salvage doctor`, `salvage soundings`, `salvage lldb` and `salvage clangd`.
 
 Download the archive for your machine, check it against `SHA256SUMS`, extract it, and put `salvage` somewhere on your `PATH`.
 

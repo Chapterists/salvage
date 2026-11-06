@@ -4,6 +4,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
 
+use salvage::clangd;
 use salvage::doctor;
 use salvage::engine;
 use salvage::lldb;
@@ -11,7 +12,7 @@ use salvage::probe::Probe;
 use salvage::probe::SystemProbe;
 use salvage::project::Project;
 use salvage::soundings::{self, Sounding};
-use salvage::ui::{self, BAD, DIM, GOOD, paint};
+use salvage::ui::{self, BAD, BOLD, DIM, GOOD, WARN, paint};
 
 /// `0.1.0 (1a2b3c4d5e6f)`: the crate version and the commit it was built from.
 const VERSION: &str = if env!("SALVAGE_COMMIT").is_empty() {
@@ -20,8 +21,9 @@ const VERSION: &str = if env!("SALVAGE_COMMIT").is_empty() {
     concat!(env!("CARGO_PKG_VERSION"), " (", env!("SALVAGE_COMMIT"), ")")
 };
 
-/// Salvage: Chapterists' open-source toolbox, the tools we use to make our
-/// stories. First up: Unreal Engine on lighter machines and on macOS.
+/// The salvage command, from Salvage: Chapterists' open-source toolbox, the
+/// tools we use to make our stories. Checks, measurements and setup for
+/// Unreal Engine work.
 #[derive(Parser)]
 #[command(name = "salvage", version = VERSION, propagate_version = true)]
 struct Cli {
@@ -97,6 +99,46 @@ enum Command {
     /// Install or remove Salvage's LLDB formatters for Unreal types.
     #[command(subcommand)]
     Lldb(LldbCommand),
+
+    /// Set up clangd for a project's C++: a fast IDE without Xcode's indexer.
+    ///
+    /// Runs UnrealBuildTool to write compile_commands.json into the project,
+    /// then writes a .clangd tuned for Unreal code. Existing files are backed
+    /// up before they're replaced.
+    Clangd {
+        /// Project to set up: a .uproject file or its folder. Defaults to the
+        /// .uproject in the current folder.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+
+        /// Unreal Engine install to use. Found from the project when omitted.
+        #[arg(long, env = "SALVAGE_ENGINE", value_name = "PATH")]
+        engine: Option<PathBuf>,
+
+        /// Build target to index. Defaults to the editor target.
+        #[arg(long, value_name = "NAME")]
+        target: Option<String>,
+
+        /// Build configuration.
+        #[arg(long, value_name = "NAME", default_value = "Development")]
+        configuration: String,
+
+        /// Also write .vscode/settings.json for the clangd extension.
+        #[arg(long)]
+        vscode: bool,
+
+        /// Also write .nvim.lua, read by Neovim when 'exrc' is on.
+        #[arg(long)]
+        neovim: bool,
+
+        /// Only run UnrealBuildTool if build rules or the set of source files changed.
+        #[arg(long)]
+        refresh: bool,
+
+        /// Show what would run, and change nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -134,6 +176,25 @@ fn main() -> ExitCode {
             json,
         } => run_soundings(&captures, targets, headroom, top, require, json),
         Command::Lldb(command) => run_lldb(command),
+        Command::Clangd {
+            project,
+            engine,
+            target,
+            configuration,
+            vscode,
+            neovim,
+            refresh,
+            dry_run,
+        } => run_clangd(ClangdArgs {
+            project,
+            engine,
+            target,
+            configuration,
+            vscode,
+            neovim,
+            refresh,
+            dry_run,
+        }),
     }
 }
 
@@ -294,6 +355,187 @@ fn run_lldb(command: LldbCommand) -> ExitCode {
     };
     let mut stdout = anstream::stdout();
     let _ = stdout.write_all(out.as_bytes());
+    ExitCode::SUCCESS
+}
+
+struct ClangdArgs {
+    project: Option<PathBuf>,
+    engine: Option<PathBuf>,
+    target: Option<String>,
+    configuration: String,
+    vscode: bool,
+    neovim: bool,
+    refresh: bool,
+    dry_run: bool,
+}
+
+fn run_clangd(args: ClangdArgs) -> ExitCode {
+    let probe = SystemProbe;
+    let project = match &args.project {
+        Some(path) => match Project::open(path) {
+            Ok(project) => project,
+            Err(error) => return usage_error(&error),
+        },
+        None => match std::env::current_dir()
+            .ok()
+            .and_then(|dir| Project::find_in(&dir))
+        {
+            Some(project) => project,
+            None => {
+                return usage_error(
+                    "no .uproject here; run this in a project folder or pass --project",
+                );
+            }
+        },
+    };
+    let engine = match engine::discover(args.engine.as_deref(), Some(&project), &probe) {
+        Ok(Some(engine)) => engine,
+        Ok(None) => {
+            return usage_error("couldn't find an Unreal Engine install; pass --engine <path>");
+        }
+        Err(error) => return usage_error(&error),
+    };
+    let Some(platform) = clangd::host_platform(probe.os()) else {
+        return usage_error("clangd setup supports macOS, Linux and Windows");
+    };
+    let target = match clangd::choose_target(&project, args.target.as_deref()) {
+        Ok(target) => target,
+        Err(error) => return usage_error(&error),
+    };
+
+    let mut out = anstream::stdout();
+    let command =
+        clangd::UbtCommand::new(&engine, &project, &target, platform, &args.configuration);
+    let _ = writeln!(
+        out,
+        "\n  {}  {} with {}",
+        paint(BOLD, "salvage clangd"),
+        project.name,
+        paint(
+            DIM,
+            format!("{} at {}", engine.label(), engine.root.display())
+        )
+    );
+    if args.dry_run {
+        let _ = writeln!(out, "\n  Would run:\n    {}", command.display());
+        let _ = writeln!(
+            out,
+            "  Then write {} into {}{}{}.\n",
+            clangd::CLANGD_FILE,
+            project.dir.display(),
+            if args.vscode {
+                ", plus .vscode/settings.json"
+            } else {
+                ""
+            },
+            if args.neovim { ", plus .nvim.lua" } else { "" }
+        );
+        return ExitCode::SUCCESS;
+    }
+
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let request = clangd::Request {
+        target: target.clone(),
+        platform: platform.to_string(),
+        configuration: args.configuration.clone(),
+        vscode: args.vscode,
+        neovim: args.neovim,
+        refresh: args.refresh,
+        os: probe.os(),
+        stamp,
+    };
+    let mut run_ubt = |command: &clangd::UbtCommand| -> Result<(), String> {
+        let mut out = anstream::stdout();
+        let _ = writeln!(
+            out,
+            "\n  Running UnrealBuildTool for {target} ({platform} {}). This usually takes under a minute.\n",
+            args.configuration
+        );
+        let _ = out.flush();
+        let status = std::process::Command::new(&command.program)
+            .args(&command.args)
+            .status()
+            .map_err(|e| format!("can't run {}: {e}", command.program.display()))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "UnrealBuildTool failed ({status}). The command was:\n  {}",
+                command.display()
+            ))
+        }
+    };
+    let outcome = match clangd::setup(&project, &engine, &request, &mut run_ubt) {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            let mut stderr = anstream::stderr();
+            let _ = writeln!(stderr, "{} {error}", paint(BAD, "salvage:"));
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let done = paint(GOOD, "✓");
+    let relative = |path: &std::path::Path| {
+        path.strip_prefix(&project.dir)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| path.display().to_string())
+    };
+    let _ = writeln!(out);
+    match (&outcome.skipped, &outcome.reason) {
+        (Some(why), _) => {
+            let _ = writeln!(out, "  {done} {} is up to date: {why}", clangd::DATABASE);
+        }
+        (None, reason) => {
+            let entries = outcome
+                .entries
+                .map(|n| format!(" ({n} files)"))
+                .unwrap_or_default();
+            let because = reason
+                .as_ref()
+                .map(|r| format!(", because {r}"))
+                .unwrap_or_default();
+            let _ = writeln!(out, "  {done} Wrote {}{entries}{because}", clangd::DATABASE);
+        }
+    }
+    for (path, written) in &outcome.files {
+        let line = match written {
+            salvage::fsutil::Written::Created => format!("Wrote {}", relative(path)),
+            salvage::fsutil::Written::Unchanged => format!("{} is already set up", relative(path)),
+            salvage::fsutil::Written::Replaced { backup } => {
+                format!("Updated {} (backup: {})", relative(path), relative(backup))
+            }
+        };
+        let _ = writeln!(out, "  {done} {line}");
+    }
+    let generated = &outcome.generated;
+    if !generated.missing.is_empty() {
+        let list: Vec<&str> = generated
+            .missing
+            .iter()
+            .take(5)
+            .map(String::as_str)
+            .collect();
+        let more = if generated.missing.len() > 5 {
+            ", ..."
+        } else {
+            ""
+        };
+        let _ = writeln!(
+            out,
+            "  {} {} of {} generated headers are missing ({}{more}).\n      Build {target} once so UnrealHeaderTool writes them; until then clangd flags UCLASS code.",
+            paint(WARN, "!"),
+            generated.missing.len(),
+            generated.expected,
+            list.join(", ")
+        );
+    }
+    let _ = writeln!(
+        out,
+        "\n  Open the project folder in an editor with clangd. Run `salvage clangd --refresh`\n  after adding source files or changing Build.cs files.\n"
+    );
     ExitCode::SUCCESS
 }
 
