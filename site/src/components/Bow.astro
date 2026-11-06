@@ -1,0 +1,93 @@
+---
+// The hero illustration: the bow of a ship, side on, with draft marks painted
+// up the stem in gigabytes. The sea and the hull run off past the edges of the
+// drawing (overflow is visible) so the waterline crosses the whole hero.
+//
+// viewBox is 520 wide and runs from y = 150 to 640, with the waterline at
+// y = 400. The part below the waterline is 240/520 = 0.4615 of the rendered
+// width; index.astro relies on that.
+
+// The stem runs from the deck at (90, 180) down to the bulb at (222, 538).
+const stemX = (y: number) => 90 + ((y - 180) * 132) / 358;
+// Marks every 2 GB, 20 units per GB. The waterline (y = 400) falls at 7.
+const marks = [16, 14, 12, 10, 8, 6, 4, 2].map((gb) => ({ gb, y: 400 - (gb - 7) * 20 + 10 }));
+const hull =
+  "M90 180 L1400 180 L1400 640 L330 640 C 284 640 254 634 232 622 C 192 624 160 604 160 576 C 160 548 190 532 222 538 Q 150 360 90 180 Z";
+---
+<svg class="bow" viewBox="0 150 520 490" aria-hidden="true">
+  <defs>
+    <clipPath id="bow-above"><rect x="-4000" y="-200" width="6000" height="598" /></clipPath>
+    <clipPath id="bow-below"><rect x="-4000" y="402" width="6000" height="600" /></clipPath>
+  </defs>
+  <rect class="sea" x="-4000" y="400" width="6000" height="1000" />
+  <g class="ship">
+    <path class="topsides" d={hull} clip-path="url(#bow-above)" />
+    <path class="bottom" d={hull} clip-path="url(#bow-below)" />
+    <rect class="rail" x="92" y="180" width="1400" height="9" />
+    <circle class="hawse" cx="330" cy="236" r="15" />
+    <circle class="hawse-in" cx="330" cy="236" r="7" />
+    <g class="marks">
+      <text class="unit" x={stemX(220) + 84} y="218">GB</text>
+      {marks.map((m) => (
+        <text x={stemX(m.y) + 36} y={m.y}>{m.gb}</text>
+      ))}
+    </g>
+  </g>
+  <line class="surface" x1="-4000" y1="400" x2="2000" y2="400" />
+</svg>
+<style>
+  .bow {
+    overflow: visible;
+    width: 100%;
+    height: auto;
+  }
+  .sea {
+    fill: var(--deep-sea);
+  }
+  .topsides {
+    fill: var(--hull-navy-hi);
+  }
+  .bottom {
+    fill: var(--antifouling);
+  }
+  .rail {
+    fill: var(--rescue-orange);
+  }
+  .hawse {
+    fill: var(--night-sea);
+  }
+  .hawse-in {
+    fill: var(--deep-sea);
+  }
+  .marks text {
+    fill: var(--foam);
+    font-family: var(--font-sans);
+    font-stretch: 100%;
+    font-weight: 800;
+    font-size: 26px;
+  }
+  .marks .unit {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    fill: var(--crane-yellow);
+  }
+  .surface {
+    stroke: var(--sea-glass);
+    stroke-width: 2;
+    opacity: 0.7;
+  }
+  .ship {
+    animation: ride 7s ease-in-out infinite;
+  }
+  @keyframes ride {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-7px);
+    }
+  }
+</style>

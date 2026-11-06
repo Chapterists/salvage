@@ -1,0 +1,48 @@
+# Salvage site
+
+The source for the Salvage website: a static site built with [Astro](https://astro.build). It isn't hosted anywhere yet.
+
+## Run it
+
+You need Node.js 22.23.4 or newer.
+
+```sh
+cd site
+npm ci
+npm run dev       # http://localhost:4321, reloads as you edit
+npm run build     # writes the static site to site/dist/
+```
+
+CI builds the site on every pull request that touches it (`.github/workflows/site.yml`). It doesn't deploy.
+
+## Where things are
+
+| Path | What it is |
+| --- | --- |
+| `src/pages/` | One file per page. `contributing.astro` renders `CONTRIBUTING.md` from the repository root, so edit that file, not the page. |
+| `src/content/logbook/` | Logbook entries, one markdown file each. |
+| `src/layouts/` | `Base.astro` (header, footer, theme) and `Page.astro` (inner pages with a title band). |
+| `src/components/` | The mark, wordmark, waterline dividers, the hero bow and the workstream icons. All hand-drawn SVG. |
+| `src/styles/tokens.css` | Colors, type, spacing, and the night and day themes. |
+| `public/fonts/` | Self-hosted fonts, each with its license. |
+
+## Add a logbook entry
+
+Create `src/content/logbook/YYYY-MM-DD-NN-short-name.md`, where `NN` orders entries made on the same day:
+
+```md
+---
+title: What changed, in a few words
+date: 2026-11-06
+---
+
+One or two plain sentences: what changed and why it matters.
+```
+
+## Design notes
+
+- **Colors** come from a working ship: Night Sea ground, Hull Navy surfaces, Antifouling Red below the waterline, Rescue Orange for the one loud moment, Crane Yellow for highlights and status, Sea Glass for links and data, Foam for text. `tokens.css` lists the contrast ratio of each pairing used for text. Antifouling Red is only for fills and large display type on dark grounds.
+- **Night is the default.** Day mode changes the reading ground. The header, hero, title bands and footer keep their ship colors in both modes.
+- **Type:** Archivo (SIL Open Font License) set at its widest for hull-lettering headlines and at normal width for reading, and Martian Mono (SIL Open Font License) for labels, code and numbers. Numbers use tabular figures.
+- **The waterline** is the section break: a flat, crisp line between two colors, angled or gently rolling.
+- **Copy:** plain and specific, numbers over adjectives, American spelling, no em dashes. Never describe something as available before it ships.

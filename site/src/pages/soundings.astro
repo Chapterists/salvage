@@ -1,0 +1,40 @@
+---
+import Page from "../layouts/Page.astro";
+import DraftReadout from "../components/DraftReadout.astro";
+---
+<Page
+  title="Soundings"
+  label="Benchmarks"
+  dek="A sounding is a measurement. Salvage reports what each change does in numbers, on named machines, with the method attached."
+>
+  <DraftReadout />
+  <div class="prose">
+    <h2>Why draft</h2>
+    <p>
+      On a ship, the draft is how deep the hull sits in the water, read off numbers painted on the bow. A ship that
+      carries less rides higher. Memory works the same way, so that's how we report it: draft before, draft after, in
+      gigabytes.
+    </p>
+
+    <h2>What every sounding records</h2>
+    <ul>
+      <li><strong>The machine.</strong> Processor, graphics card, memory, storage and operating system.</li>
+      <li><strong>The software.</strong> Engine version, the project, and the build configuration.</li>
+      <li><strong>The scenario.</strong> What was run, for how long, and how many times.</li>
+      <li>
+        <strong>The numbers.</strong> Before and after, with the spread across runs, not only the best one.
+      </li>
+      <li><strong>The method.</strong> Enough detail that you can repeat it on your own machine.</li>
+    </ul>
+    <p>
+      A number without those is a rumor. If a change only helps on one kind of machine, the sounding says so.
+    </p>
+
+    <h2>Take your own</h2>
+    <p>
+      Real machines beat our guesses. Once there are tools to measure, sounding results from your hardware will be
+      welcome as issues on <a href="https://github.com/Chapterists/salvage/issues">GitHub</a>, with the same details
+      as above.
+    </p>
+  </div>
+</Page>

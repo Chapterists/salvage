@@ -1,0 +1,101 @@
+---
+import Mark from "./Mark.astro";
+import Wordmark from "./Wordmark.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+
+const nav = [
+  { href: "/charts/", label: "Charts" },
+  { href: "/manifest/", label: "Manifest" },
+  { href: "/soundings/", label: "Soundings" },
+  { href: "/logbook/", label: "Logbook" },
+  { href: "/contributing/", label: "Contributing" },
+];
+const path = Astro.url.pathname;
+---
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="home" href="/" aria-label="Salvage home">
+      <Mark class="home-mark" />
+      <Wordmark id="header-wm" class="home-wm" />
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        {nav.map((item) => (
+          <li>
+            <a href={item.href} aria-current={path.startsWith(item.href) ? "page" : undefined}>
+              {item.label}
+            </a>
+          </li>
+        ))}
+        <li><a href="https://github.com/Chapterists/salvage">GitHub</a></li>
+      </ul>
+    </nav>
+    <ThemeToggle />
+  </div>
+</header>
+<style>
+  .site-header {
+    background: var(--night-sea);
+    color: var(--foam);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-5);
+    padding-block: var(--s-4);
+  }
+  .home {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    margin-right: auto;
+  }
+  .home :global(.home-mark) {
+    width: 2rem;
+    height: 2rem;
+  }
+  .home :global(.home-wm) {
+    width: 8.5rem;
+    height: auto;
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  nav a {
+    color: var(--foam);
+    text-decoration: none;
+    font-stretch: var(--stretch-sign);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    padding-block: 0.25rem;
+    border-bottom: 2px solid transparent;
+  }
+  nav a:hover {
+    border-bottom-color: var(--rescue-orange);
+  }
+  nav a[aria-current="page"] {
+    border-bottom-color: var(--crane-yellow);
+  }
+  @media (max-width: 860px) {
+    .bar {
+      flex-wrap: wrap;
+      row-gap: var(--s-3);
+    }
+    nav {
+      order: 3;
+      width: 100%;
+    }
+    ul {
+      gap: 0.25rem 1.1rem;
+    }
+    nav a {
+      font-size: 0.875rem;
+    }
+  }
+</style>

@@ -1,0 +1,81 @@
+---
+import Page from "../layouts/Page.astro";
+---
+<Page
+  title="Manifest"
+  label="Tools"
+  dek="Every Salvage tool: what it does, where it runs, and what it changes. The list is empty because nothing has shipped."
+>
+  <table class="ledger">
+    <caption class="visually-hidden">Salvage tools</caption>
+    <thead>
+      <tr>
+        <th scope="col">Tool</th>
+        <th scope="col">Workstream</th>
+        <th scope="col">What it does</th>
+        <th scope="col">Soundings</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="4">Nothing has shipped yet.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="prose">
+    <h2>What goes on the manifest</h2>
+    <p>A tool goes on this list when it has shipped and been measured. Each entry will say:</p>
+    <ul>
+      <li>What it does, in a sentence, and which workstream it belongs to.</li>
+      <li>Which platforms and engine versions it has been tested on.</li>
+      <li>Its <a href="/soundings/">soundings</a>: what it changed, measured before and after on named machines.</li>
+      <li>How to remove it and put things back the way they were.</li>
+    </ul>
+
+    <h2>What's being looked at</h2>
+    <h3>Lighter Unreal</h3>
+    <p>
+      Where Unreal Engine games and the editor spend memory, and how much of it the work actually needs. Memory comes
+      first because it's the part of a machine that's hardest to afford right now.
+    </p>
+    <h3>Unreal on Mac</h3>
+    <p>Where developing with Unreal Engine on macOS is slow or awkward, and what would make it fast and pleasant.</p>
+    <p>
+      Fixes that belong in the engine itself will go upstream to Epic Games as pull requests, so they won't appear on
+      this list as tools. The <a href="/logbook/">logbook</a> will record them.
+    </p>
+  </div>
+</Page>
+<style>
+  .ledger {
+    width: 100%;
+    max-width: 62rem;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+    margin-bottom: var(--s-4);
+  }
+  th {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--muted);
+    padding: 0 var(--s-4) var(--s-3) 0;
+    border-bottom: 2px solid var(--text);
+  }
+  td {
+    padding: var(--s-5) 0;
+    border-bottom: 2px solid var(--rule);
+    font-family: var(--font-mono);
+    color: var(--mark);
+  }
+  @media (max-width: 600px) {
+    th:nth-child(3),
+    th:nth-child(4) {
+      display: none;
+    }
+  }
+</style>

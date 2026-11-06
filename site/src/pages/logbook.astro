@@ -1,0 +1,57 @@
+---
+import Page from "../layouts/Page.astro";
+import { render } from "astro:content";
+import { logbookEntries, formatDate } from "../lib/logbook";
+
+const entries = await Promise.all(
+  (await logbookEntries()).map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+---
+<Page title="Logbook" label="Changelog" dek="What changed in Salvage, newest first.">
+  <ol class="log">
+    {entries.map(({ entry, Content }) => (
+      <li>
+        <time class="stencil" datetime={formatDate(entry.data.date)}>{formatDate(entry.data.date)}</time>
+        <div>
+          <h2>{entry.data.title}</h2>
+          <div class="prose"><Content /></div>
+        </div>
+      </li>
+    ))}
+  </ol>
+</Page>
+<style>
+  .log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 52rem;
+  }
+  .log > li {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: var(--s-5);
+    padding-block: var(--s-6);
+    border-top: 2px solid var(--rule);
+  }
+  time {
+    color: var(--muted);
+    padding-top: 0.45rem;
+  }
+  h2 {
+    font-stretch: var(--stretch-hull);
+    font-weight: 800;
+    font-size: var(--step-2);
+    line-height: 1.15;
+    margin: 0 0 var(--s-3);
+  }
+  .prose :global(p) {
+    margin: 0;
+  }
+  @media (max-width: 600px) {
+    .log > li {
+      grid-template-columns: 1fr;
+      gap: var(--s-2);
+    }
+  }
+</style>

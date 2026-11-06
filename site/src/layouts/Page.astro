@@ -1,0 +1,51 @@
+---
+// Inner pages: a title band above the waterline, the page below it.
+import Base from "./Base.astro";
+import Waterline from "../components/Waterline.astro";
+
+interface Props {
+  title: string;
+  label: string;
+  dek?: string;
+  description?: string;
+}
+const { title, label, dek, description } = Astro.props;
+---
+<Base title={title} description={description ?? dek}>
+  <section class="band">
+    <div class="wrap">
+      <p class="stencil label">{label}</p>
+      <h1 class="hull">{title}</h1>
+      {dek && <p class="dek">{dek}</p>}
+    </div>
+  </section>
+  <Waterline above="var(--night-sea)" below="var(--ground)" shape="angle" stripe="var(--antifouling)" height="clamp(2rem, 0.5rem + 4vw, 4.5rem)" />
+  <div class="wrap body">
+    <slot />
+  </div>
+</Base>
+<style>
+  .band {
+    background: var(--night-sea);
+    color: var(--foam);
+    padding-block: var(--s-7) var(--s-4);
+  }
+  .label {
+    color: var(--crane-yellow);
+    margin: 0 0 var(--s-3);
+  }
+  h1 {
+    font-size: var(--step-5);
+    margin: 0;
+  }
+  .dek {
+    font-size: var(--step-1);
+    line-height: 1.45;
+    color: var(--steel);
+    max-width: 38rem;
+    margin: var(--s-4) 0 0;
+  }
+  .body {
+    padding-block: var(--s-6) var(--s-9);
+  }
+</style>

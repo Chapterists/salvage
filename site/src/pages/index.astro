@@ -1,0 +1,408 @@
+---
+import Base from "../layouts/Base.astro";
+import Bow from "../components/Bow.astro";
+import Waterline from "../components/Waterline.astro";
+import IconLighter from "../components/IconLighter.astro";
+import IconDrydock from "../components/IconDrydock.astro";
+import { logbookEntries, formatDate } from "../lib/logbook";
+
+const recent = (await logbookEntries()).slice(0, 3);
+---
+<Base>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="headline">
+        <p class="stencil status"><span class="dot" aria-hidden="true"></span>Early days. Nothing shipped yet.</p>
+        <h1 class="hull">Your machine has more in it than you think.</h1>
+      </div>
+      <div class="above">
+        <p class="sub">
+          RAM is expensive right now, and high-end games keep asking for more of it. Salvage is open-source tools
+          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine.
+        </p>
+      </div>
+      <div class="bow-cell">
+        <Bow />
+      </div>
+      <div class="below">
+        <p class="tagline hull">We don't sell you a new ship. We get yours sailing.</p>
+        <p class="caption">Draft marks, in gigabytes. A ship that carries less rides higher.</p>
+      </div>
+    </div>
+  </section>
+
+  <Waterline above="var(--deep-sea)" below="var(--ground)" shape="angle-reverse" stripe="var(--antifouling)" />
+
+  <section class="why wrap">
+    <p class="stencil section-label">Why</p>
+    <h2 class="hull">Upgrading is the usual answer. Right now it's an expensive one.</h2>
+    <div class="why-copy">
+      <p>
+        A machine gets written off when a game or an editor wants more memory than it has. We would rather find out
+        how much of that memory the work really needs, and cut what it doesn't.
+      </p>
+      <p>
+        A fix like that helps everyone. The old laptop gets a game that runs. The big workstation gets its memory
+        back.
+      </p>
+    </div>
+  </section>
+
+  <section class="streams wrap" aria-labelledby="streams-title">
+    <p class="stencil section-label" id="streams-title">Two workstreams</p>
+
+    <article class="stream">
+      <IconLighter class="stream-icon" />
+      <div>
+        <h3 class="hull">Lighter Unreal</h3>
+        <p class="lede">Make Unreal Engine games and the editor run on lower-powered machines, memory first.</p>
+        <p>
+          A lighter is a barge that takes cargo off a ship so it can float into shallow water. Same job here: take
+          load off the engine so big games fit on small machines.
+        </p>
+        <p class="stencil stream-status">Status: surveying where the memory goes</p>
+      </div>
+    </article>
+
+    <article class="stream">
+      <IconDrydock class="stream-icon" />
+      <div>
+        <h3 class="hull">Unreal on Mac</h3>
+        <p class="lede">Make developing with Unreal Engine on macOS fast and pleasant.</p>
+        <p>
+          Plenty of people build games on a Mac. The editor, the builds and the tools around them should feel like
+          they belong there, not like they're putting up with it.
+        </p>
+        <p class="stencil stream-status">Status: surveying where the time goes</p>
+      </div>
+    </article>
+  </section>
+
+  <Waterline above="var(--ground)" below="var(--ground-2)" shape="angle" />
+
+  <section class="built">
+    <div class="wrap">
+      <p class="stencil section-label">How it's built</p>
+      <dl>
+        <div>
+          <dt class="hull">Tools ship here.</dt>
+          <dd>Standalone tools live in the Salvage repository, under the MIT license.</dd>
+        </div>
+        <div>
+          <dt class="hull">Engine fixes go to Epic.</dt>
+          <dd>
+            Changes that belong inside Unreal Engine go upstream to Epic Games as pull requests, so they reach
+            everyone who uses the engine, not only people who find this project.
+          </dd>
+        </div>
+        <div>
+          <dt class="hull">No engine source here.</dt>
+          <dd>
+            Unreal Engine source stays under Epic's license. A check on every commit keeps it out of this
+            repository.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <Waterline above="var(--ground-2)" below="var(--ground)" shape="angle-reverse" />
+
+  <section class="deck wrap">
+    <div>
+      <p class="stencil section-label">Where things stand</p>
+      <h2 class="hull">Early. Nothing has shipped.</h2>
+      <p>
+        We're measuring where Unreal spends memory and where Mac development slows down, and deciding what to build
+        from what we find. When a tool ships, it goes on the <a href="/manifest/">manifest</a> with <a href="/soundings/">soundings</a>:
+        before-and-after measurements on real machines.
+      </p>
+    </div>
+    <div class="log">
+      <h3 class="stencil">From the logbook</h3>
+      <ol>
+        {recent.map((e) => (
+          <li>
+            <time datetime={formatDate(e.data.date)}>{formatDate(e.data.date)}</time>
+            <span>{e.data.title}</span>
+          </li>
+        ))}
+      </ol>
+      <a href="/logbook/">Read the whole logbook</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* ---- Hero ---- */
+  .hero {
+    --bow-w: min(40vw, 36rem);
+    --below-h: calc(var(--bow-w) * 0.4615);
+    background: var(--night-sea);
+    color: var(--foam);
+    overflow: hidden;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--bow-w);
+    grid-template-rows: auto 1fr var(--below-h);
+    column-gap: var(--s-7);
+    padding-top: var(--s-8);
+  }
+  .headline {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    position: relative;
+    z-index: 1;
+    padding-bottom: var(--s-5);
+  }
+  .above {
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+    z-index: 1;
+    padding-top: var(--s-4);
+  }
+  .bow-cell {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    align-self: end;
+  }
+  .below {
+    grid-column: 1;
+    grid-row: 3;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--crane-yellow);
+    margin: 0 0 var(--s-5);
+  }
+  .dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--crane-yellow);
+  }
+  h1 {
+    font-size: clamp(2.5rem, 1rem + 4.6vw, 5.5rem);
+    margin: 0;
+    max-width: 24ch;
+  }
+  .sub {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--steel);
+    max-width: 34rem;
+    margin: var(--s-5) 0 0;
+  }
+  .tagline {
+    font-size: var(--step-3);
+    font-weight: 800;
+    margin: 0;
+    max-width: 18ch;
+  }
+  .caption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--sea-glass);
+    margin: var(--s-4) 0 0;
+  }
+
+  @media (max-width: 860px) {
+    .hero {
+      --bow-w: min(78vw, 26rem);
+    }
+    .hero-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      padding-top: var(--s-7);
+    }
+    .headline,
+    .above {
+      grid-column: 1;
+      grid-row: auto;
+    }
+    .above {
+      padding: 0 0 var(--s-6);
+    }
+    .bow-cell {
+      grid-column: 1;
+      grid-row: auto;
+      width: var(--bow-w);
+      justify-self: end;
+      margin-right: calc(var(--gutter) * -1);
+    }
+    .below {
+      grid-column: 1;
+      grid-row: auto;
+      background: var(--deep-sea);
+      box-shadow: 0 0 0 100vmax var(--deep-sea);
+      clip-path: inset(0 -100vmax);
+      padding-block: var(--s-6) var(--s-4);
+    }
+  }
+
+  /* ---- Shared section bits ---- */
+  .section-label {
+    color: var(--accent);
+    margin: 0 0 var(--s-4);
+  }
+  h2 {
+    font-size: var(--step-4);
+    margin: 0;
+  }
+
+  /* ---- Why ---- */
+  .why h2 {
+    font-size: clamp(2rem, 1.2rem + 2.6vw, 3.5rem);
+  }
+  .why {
+    padding-block: var(--s-8) var(--s-4);
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--s-8);
+  }
+  .why .section-label {
+    grid-column: 1 / -1;
+  }
+  .why-copy {
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .why-copy p {
+    margin: 0;
+  }
+  .why-copy p + p {
+    margin-top: var(--s-4);
+  }
+
+  /* ---- Workstreams ---- */
+  .streams {
+    padding-block: var(--s-6) var(--s-5);
+  }
+  .stream {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: var(--s-6);
+    padding-block: var(--s-7);
+    border-top: 2px solid var(--rule);
+    max-width: 58rem;
+  }
+  .stream :global(.stream-icon) {
+    width: 8rem;
+    height: 8rem;
+    filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.28));
+  }
+  .stream h3 {
+    font-size: var(--step-3);
+    margin: 0;
+  }
+  .stream p {
+    margin: var(--s-3) 0 0;
+    max-width: var(--measure);
+  }
+  .lede {
+    font-size: var(--step-1);
+    line-height: 1.45;
+    font-weight: 600;
+  }
+  .stream-status {
+    color: var(--mark);
+    margin-top: var(--s-5) !important;
+  }
+
+  /* ---- How it's built ---- */
+  .built {
+    background: var(--ground-2);
+    padding-block: var(--s-6) var(--s-7);
+  }
+  dl {
+    margin: 0;
+    max-width: 62rem;
+  }
+  dl > div {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--s-6);
+    padding-block: var(--s-5);
+    border-top: 2px solid var(--rule);
+  }
+  dt {
+    font-size: var(--step-2);
+    font-weight: 800;
+  }
+  dd {
+    margin: 0;
+    color: var(--text);
+    padding-top: 0.3rem;
+  }
+
+  /* ---- Where things stand ---- */
+  .deck {
+    padding-block: var(--s-8) var(--s-8);
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--s-8);
+    align-items: start;
+  }
+  .deck h2 {
+    font-size: var(--step-3);
+  }
+  .deck p:not(.stencil) {
+    margin: var(--s-4) 0 0;
+    max-width: var(--measure);
+    font-size: var(--step-1);
+    line-height: 1.55;
+  }
+  .log h3 {
+    color: var(--muted);
+    margin: 0.4rem 0 var(--s-4);
+  }
+  .log ol {
+    list-style: none;
+    margin: 0 0 var(--s-5);
+    padding: 0;
+    border-left: 3px solid var(--antifouling);
+  }
+  .log li {
+    padding: 0 0 var(--s-4) var(--s-4);
+    display: grid;
+    gap: 0.15rem;
+  }
+  .log time {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .log span {
+    font-weight: 600;
+  }
+
+  @media (max-width: 860px) {
+    .why,
+    .deck {
+      grid-template-columns: 1fr;
+      row-gap: var(--s-5);
+    }
+    .stream {
+      grid-template-columns: 1fr;
+      gap: var(--s-4);
+    }
+    .stream :global(.stream-icon) {
+      width: 5.5rem;
+      height: 5.5rem;
+    }
+    dl > div {
+      grid-template-columns: 1fr;
+      gap: var(--s-2);
+    }
+  }
+</style>

@@ -1,0 +1,27 @@
+---
+// SALVAGE in hull lettering, with the waterline cutting through it. The top is
+// painted in --wm-top (Foam by default), the bottom in antifouling red.
+import { letters, width, waterline } from "../brand/wordmark.js";
+interface Props {
+  id: string;
+  class?: string;
+  title?: string;
+}
+const { id, class: className, title = "Salvage" } = Astro.props;
+const glyphs = letters.map(([d, x]) => ({ d, x }));
+---
+<svg
+  class:list={["wordmark", className]}
+  viewBox={`0 0 ${width} 100`}
+  role="img"
+  aria-label={title}
+>
+  <clipPath id={`${id}-above`}><rect x="-10" y="-10" width={width + 20} height={waterline.above + 10} /></clipPath>
+  <clipPath id={`${id}-below`}><rect x="-10" y={waterline.below} width={width + 20} height={110 - waterline.below} /></clipPath>
+  <g fill="var(--wm-top, var(--foam))" fill-rule="evenodd" clip-path={`url(#${id}-above)`}>
+    {glyphs.map((g) => <path transform={`translate(${g.x} 0)`} d={g.d} />)}
+  </g>
+  <g fill="var(--wm-bottom, var(--antifouling))" fill-rule="evenodd" clip-path={`url(#${id}-below)`}>
+    {glyphs.map((g) => <path transform={`translate(${g.x} 0)`} d={g.d} />)}
+  </g>
+</svg>
