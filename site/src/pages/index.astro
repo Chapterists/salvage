@@ -62,14 +62,16 @@ const recent = (await logbookEntries()).slice(0, 3);
   <section class="streams wrap" aria-labelledby="streams-title">
     <h2 class="hull streams-title" id="streams-title">What we're working on</h2>
 
-    <article class="stream">
+    <article class="stream" id="lighter-unreal">
       <IconLighter class="stream-icon" />
       <div>
         <h3 class="hull">Lighter Unreal</h3>
         <p class="lede">Make Unreal Engine games and the editor run on lower-powered machines, memory first.</p>
         <p>
           A lighter is a barge that takes cargo off a ship so it can float into shallow water. Same job here: take
-          load off the engine so big games fit on small machines.
+          load off the engine so big games fit on small
+          machines. <a href="/charts/unreal-memory-on-16-gb/">Where Unreal's memory goes on a 16 GB machine</a> explains what
+          we're up against.
         </p>
         <p class="now">
           First tool: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture

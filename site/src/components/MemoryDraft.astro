@@ -1,0 +1,254 @@
+---
+// The memory-stack diagram for "Where Unreal's memory goes on a 16 GB machine".
+//
+// Left: a hull with draft marks in gigabytes. The solid hull is a 16 GB Mac;
+// the dashed hull above it is the 32 GB Epic recommends for the editor.
+// Right: the bottom 2 GB enlarged, with the four memory budgets that have
+// fixed defaults in UE 5.8.4 at Epic quality stacked to scale.
+//
+// Illustrative. The budgets are limits, not measured use, and the rest of the
+// hull is left empty because what fills it varies from game to game.
+
+const MB_PER_GB = 1024;
+
+// The budgets, biggest at the keel.
+const budgets = [
+  { name: "Texture streaming pool", mb: 1000, note: "1000 MB at Epic", color: "var(--rescue-orange)" },
+  { name: "Nanite streaming pool", mb: 512, note: "512 MB at every level", color: "var(--sea-glass)" },
+  { name: "Render target pool floor", mb: 400, note: "400 MB at Epic", color: "var(--crane-yellow)" },
+  { name: "Audio stream cache", mb: 64, note: "64 MB at every level", color: "var(--foam)" },
+];
+const totalMb = budgets.reduce((n, b) => n + b.mb, 0);
+
+// ---- The whole hull ----
+const H = { keel: 620, perGb: 18, left: 110, right: 250, bilge: 28 };
+const hy = (gb: number) => H.keel - gb * H.perGb;
+const hullPath = (topGb: number) =>
+  `M${H.left} ${hy(topGb)} V${H.keel - H.bilge} Q${H.left} ${H.keel} ${H.left + H.bilge} ${H.keel} ` +
+  `H${H.right - H.bilge} Q${H.right} ${H.keel} ${H.right} ${H.keel - H.bilge} V${hy(topGb)} Z`;
+let acc = 0;
+const hullBands = budgets.map((b) => {
+  const bottom = hy(acc / MB_PER_GB);
+  acc += b.mb;
+  const top = hy(acc / MB_PER_GB);
+  return { ...b, y: top, h: bottom - top };
+});
+// 16 and 32 are labeled beside the hull instead.
+const hullMarks = [4, 8, 12, 20, 24, 28];
+
+// ---- The bottom 2 GB, enlarged ----
+const Z = { keel: 400, perGb: 180, left: 120, right: 280, bilge: 22 };
+const zy = (gb: number) => Z.keel - gb * Z.perGb;
+const zoomPath =
+  `M${Z.left} ${zy(2.05)} V${Z.keel - Z.bilge} Q${Z.left} ${Z.keel} ${Z.left + Z.bilge} ${Z.keel} ` +
+  `H${Z.right - Z.bilge} Q${Z.right} ${Z.keel} ${Z.right} ${Z.keel - Z.bilge} V${zy(2.05)} Z`;
+acc = 0;
+const zoomBands = budgets.map((b) => {
+  const bottom = zy(acc / MB_PER_GB);
+  acc += b.mb;
+  const top = zy(acc / MB_PER_GB);
+  return { ...b, y: top, h: bottom - top, mid: (top + bottom) / 2 };
+});
+// Spread the labels so the small bands at the top don't collide.
+const labelY = zoomBands.map((b) => b.mid);
+for (let i = labelY.length - 2; i >= 0; i--) {
+  // Labels are ordered keel-up, so each one must sit at least 44 units below the next.
+  labelY[i] = Math.max(labelY[i], labelY[i + 1] + 44);
+}
+const zoomMarks = [0.5, 1, 1.5, 2];
+---
+<figure class="draft">
+  <div class="panels">
+    <svg class="whole" viewBox="0 30 400 610" role="img" aria-labelledby="draft-hull-title">
+      <title id="draft-hull-title">
+        A hull with draft marks in gigabytes. The solid part is a 16 GB Mac. A dashed outline above it reaches 32 GB,
+        the memory Epic recommends for the editor. The bottom 2 GB is marked as enlarged.
+      </title>
+      <defs>
+        <clipPath id="draft-hull-clip"><path d={hullPath(16)} /></clipPath>
+      </defs>
+      <path class="ghost-fill" d={`M${H.left} ${hy(16)} V${hy(32)} H${H.right} V${hy(16)} Z`} />
+      <path class="ghost" d={`M${H.left} ${hy(16)} V${hy(32)} H${H.right} V${hy(16)}`} />
+      <path class="solid" d={hullPath(16)} />
+      <g clip-path="url(#draft-hull-clip)">
+        {hullBands.map((b) => <rect x={H.left} y={b.y} width={H.right - H.left} height={b.h} fill={b.color} />)}
+      </g>
+      <rect class="bulwark" x={H.left} y={hy(16) - 6} width={H.right - H.left} height="6" />
+      <g class="marks">
+        {hullMarks.map((gb) => (
+          <text x={H.left + 12} y={hy(gb)} class:list={{ faint: gb > 16 }}>{gb}</text>
+        ))}
+        <text class="unit" x={H.left + 46} y={hy(12)}>GB</text>
+      </g>
+      <g class="labels">
+        <text x={H.right + 14} y={hy(32) + 4}><tspan class="big">32 GB</tspan></text>
+        <text x={H.right + 14} y={hy(32) + 24}>Epic's recommended</text>
+        <text x={H.right + 14} y={hy(32) + 40}>RAM for the editor</text>
+        <text x={H.right + 14} y={hy(16) + 4}><tspan class="big">16 GB</tspan></text>
+        <text x={H.right + 14} y={hy(16) + 24}>this Mac</text>
+      </g>
+      <path class="bracket" d={`M${H.right + 8} ${hy(0)} h8 V${hy(2)} h-8`} />
+      <text class="zoom-note" x={H.right + 24} y={hy(1) + 4}>2 GB, enlarged</text>
+    </svg>
+
+    <svg class="zoom" viewBox="0 20 560 400" role="img" aria-labelledby="draft-zoom-title">
+      <title id="draft-zoom-title">
+        The bottom 2 GB, enlarged. Stacked from the keel: texture streaming pool 1000 MB, Nanite streaming pool 512
+        MB, render target pool floor 400 MB, audio stream cache 64 MB. {totalMb} MB in all.
+      </title>
+      <defs>
+        <clipPath id="draft-zoom-clip"><path d={zoomPath} /></clipPath>
+      </defs>
+      <path class="solid" d={zoomPath} />
+      <g clip-path="url(#draft-zoom-clip)">
+        {zoomBands.map((b) => <rect x={Z.left} y={b.y} width={Z.right - Z.left} height={b.h} fill={b.color} />)}
+      </g>
+      <g class="marks">
+        {zoomMarks.map((gb) => (
+          <>
+            <line x1={Z.left - 10} x2={Z.left} y1={zy(gb)} y2={zy(gb)} />
+            <text x={Z.left - 16} y={zy(gb) + 7} text-anchor="end">{gb.toFixed(1)}</text>
+          </>
+        ))}
+        <text class="unit" x={Z.left - 16} y={zy(2) - 18} text-anchor="end">GB</text>
+      </g>
+      <g class="labels">
+        {zoomBands.map((b, i) => (
+          <>
+            <path class="leader" d={`M${Z.right + 4} ${b.mid} L${Z.right + 22} ${labelY[i]} H${Z.right + 30}`} />
+            <circle cx={Z.right + 4} cy={b.mid} r="3" fill={b.color} />
+            <text x={Z.right + 38} y={labelY[i] - 2} class="name">{b.name}</text>
+            <text x={Z.right + 38} y={labelY[i] + 18} class="size">{b.note}</text>
+          </>
+        ))}
+      </g>
+    </svg>
+  </div>
+  <figcaption>
+    <strong>Illustrative.</strong> The four memory budgets with fixed defaults in Unreal Engine 5.8.4 at Epic quality,
+    drawn to scale and stacked: {totalMb.toLocaleString("en-US")} MB, about 1.9 GB. They're limits the engine
+    works within, not measurements of a running game. Virtual shadow maps and Lumen's surface cache live here too, but
+    we haven't confirmed their sizes in megabytes, so they aren't drawn. The rest of the hull is the game itself, the
+    engine, the operating system and your other apps, and that varies too much from game to game to draw.
+  </figcaption>
+</figure>
+<style>
+  .draft {
+    margin: var(--s-7) 0;
+    background: var(--night-sea);
+    color: var(--foam);
+    padding: var(--s-6) var(--s-6) var(--s-5);
+    max-width: 62rem;
+    border-bottom: 6px solid var(--antifouling);
+  }
+  .panels {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+    gap: var(--s-6);
+    align-items: end;
+  }
+  svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .solid {
+    fill: var(--hull-navy-hi);
+  }
+  .ghost-fill {
+    fill: rgb(244 241 234 / 0.04);
+  }
+  .ghost {
+    fill: none;
+    stroke: rgb(244 241 234 / 0.45);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 6;
+  }
+  .bulwark {
+    fill: var(--rescue-orange);
+  }
+  .marks text {
+    fill: var(--foam);
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: 20px;
+  }
+  .marks .faint {
+    fill: rgb(244 241 234 / 0.45);
+  }
+  .marks .unit {
+    fill: var(--crane-yellow);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .zoom .marks text {
+    font-size: 22px;
+  }
+  .zoom .marks .unit {
+    font-size: 14px;
+  }
+  .marks line {
+    stroke: var(--foam);
+    stroke-width: 2;
+  }
+  .labels text {
+    fill: var(--steel);
+    font-family: var(--font-sans);
+    font-size: 13px;
+  }
+  .labels .big {
+    fill: var(--foam);
+    font-weight: 800;
+    font-size: 17px;
+  }
+  .zoom .labels .name {
+    fill: var(--foam);
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .zoom .labels .size {
+    fill: var(--sea-glass);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+  .leader {
+    fill: none;
+    stroke: rgb(244 241 234 / 0.5);
+    stroke-width: 1.25;
+  }
+  .bracket {
+    fill: none;
+    stroke: var(--crane-yellow);
+    stroke-width: 2;
+  }
+  .zoom-note {
+    fill: var(--crane-yellow);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  figcaption {
+    margin-top: var(--s-5);
+    padding-top: var(--s-4);
+    border-top: 1px solid rgb(244 241 234 / 0.16);
+    font-size: var(--step--1);
+    line-height: 1.6;
+    color: var(--steel);
+    max-width: 46rem;
+  }
+  figcaption strong {
+    color: var(--crane-yellow);
+  }
+  @media (max-width: 700px) {
+    .draft {
+      margin-inline: calc(var(--gutter) * -1);
+      padding: var(--s-5) var(--gutter);
+    }
+    .panels {
+      grid-template-columns: 1fr;
+    }
+    .whole {
+      max-width: 22rem;
+    }
+  }
+</style>
