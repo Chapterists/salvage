@@ -7,6 +7,7 @@ pub mod doctor;
 pub mod engine;
 pub mod ini;
 pub mod jsonc;
+pub mod lldb;
 pub mod probe;
 pub mod project;
 pub mod soundings;

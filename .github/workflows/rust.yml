@@ -51,3 +51,16 @@ jobs:
           set -e
           [ "$code" -le 1 ] && [ "$json_code" -le 1 ]
           grep -q '"command": "doctor"' doctor.json
+
+  lldb-formatters:
+    name: LLDB formatters
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Builds a small C++ program with stand-ins for Unreal types, stops it
+      # in LLDB, and checks what the formatters print.
+      - name: Test the formatters in LLDB
+        run: python3 crates/salvage/lldb/tests/run_tests.py -v

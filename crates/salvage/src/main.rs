@@ -6,10 +6,12 @@ use clap::{Parser, Subcommand, ValueEnum};
 
 use salvage::doctor;
 use salvage::engine;
+use salvage::lldb;
+use salvage::probe::Probe;
 use salvage::probe::SystemProbe;
 use salvage::project::Project;
 use salvage::soundings::{self, Sounding};
-use salvage::ui::{self, BAD, paint};
+use salvage::ui::{self, BAD, DIM, GOOD, paint};
 
 /// Get more out of the hardware you already have: Unreal Engine tools for
 /// lighter machines and macOS.
@@ -84,6 +86,23 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+
+    /// Install or remove Salvage's LLDB formatters for Unreal types.
+    #[command(subcommand)]
+    Lldb(LldbCommand),
+}
+
+#[derive(Subcommand)]
+enum LldbCommand {
+    /// Make LLDB and Xcode show Unreal types (FString, TSharedPtr, TObjectPtr,
+    /// FText, TOptional, FVector...) as values instead of raw memory.
+    ///
+    /// Adds one marked `command script import` line to ~/.lldbinit (and to
+    /// ~/.lldbinit-Xcode if you have one), after backing the file up. Safe to
+    /// run again; it never rewrites your own lines.
+    Install,
+    /// Remove the line `salvage lldb install` added, and the formatter script.
+    Uninstall,
 }
 
 fn main() -> ExitCode {
@@ -107,6 +126,7 @@ fn main() -> ExitCode {
             require,
             json,
         } => run_soundings(&captures, targets, headroom, top, require, json),
+        Command::Lldb(command) => run_lldb(command),
     }
 }
 
@@ -201,6 +221,73 @@ fn run_soundings(
         Some(false) => ExitCode::FAILURE,
         None => usage_error("--require needs a capture with a process memory total"),
     }
+}
+
+fn run_lldb(command: LldbCommand) -> ExitCode {
+    let probe = SystemProbe;
+    let Some(home) = probe.home() else {
+        return usage_error("can't find your home folder");
+    };
+    let layout = lldb::Layout::for_user(home.clone(), probe.os(), |key| probe.env(key));
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let installing = matches!(command, LldbCommand::Install);
+    let outcome = match command {
+        LldbCommand::Install => lldb::install(&layout, stamp),
+        LldbCommand::Uninstall => lldb::uninstall(&layout, stamp),
+    };
+    let outcome = match outcome {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            let mut stderr = anstream::stderr();
+            let _ = writeln!(stderr, "{} {error}", paint(BAD, "salvage:"));
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let tilde = |path: &std::path::Path| match path.strip_prefix(&home) {
+        Ok(rest) => format!("~/{}", rest.display()),
+        Err(_) => path.display().to_string(),
+    };
+    let done = paint(GOOD, "✓");
+    let mut out = String::from("\n");
+    if installing {
+        let verb = if outcome.script_changed {
+            "Wrote"
+        } else {
+            "Up to date:"
+        };
+        out += &format!("  {done} {verb} {}\n", tilde(&outcome.script));
+    } else if outcome.script_changed {
+        out += &format!("  {done} Removed {}\n", tilde(&outcome.script));
+    }
+    for edit in &outcome.edits {
+        let file = tilde(&edit.file);
+        let line = match edit.change {
+            lldb::Change::Added => format!("Added the import line to {file}"),
+            lldb::Change::Updated => {
+                format!("Pointed the import line in {file} at the current script")
+            }
+            lldb::Change::Unchanged => format!("{file} already loads it"),
+            lldb::Change::Removed => format!("Removed Salvage's lines from {file}"),
+            lldb::Change::Absent => format!("{file} had nothing of Salvage's"),
+        };
+        out += &format!("  {done} {line}\n");
+        if let Some(backup) = &edit.backup {
+            out += &format!("    {}\n", paint(DIM, format!("backup: {}", tilde(backup))));
+        }
+    }
+    out += "\n";
+    out += if installing {
+        "  Restart LLDB or Xcode to pick them up. FString, TSharedPtr, TObjectPtr, FText and\n  friends will show their values.\n\n"
+    } else {
+        "  Restart LLDB or Xcode for it to take effect.\n\n"
+    };
+    let mut stdout = anstream::stdout();
+    let _ = stdout.write_all(out.as_bytes());
+    ExitCode::SUCCESS
 }
 
 fn usage_error(message: &str) -> ExitCode {

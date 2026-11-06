@@ -586,19 +586,7 @@ fn lldbinit(ctx: &Context) -> Check {
     let Some(home) = ctx.home() else {
         return check.skip("No home folder");
     };
-    let formatters = ctx.engine.and_then(|e| e.lldb_formatters());
-    let fix = |hint: &str| match &formatters {
-        Some(path) => Fix::run(
-            hint,
-            format!(
-                "echo 'command script import \"{}\"' >> ~/.lldbinit",
-                path.display()
-            ),
-        ),
-        None => Fix::hint(format!(
-            "{hint} Add a `command script import` line for Engine/Extras/LLDBDataFormatters/UEDataFormatters_2ByteChars.py from your engine."
-        )),
-    };
+    let install = |hint: &str| Fix::run(hint, "salvage lldb install");
 
     // Xcode reads ~/.lldbinit-Xcode when it exists, plain lldb reads ~/.lldbinit.
     let files: Vec<PathBuf> = [".lldbinit", ".lldbinit-Xcode"]
@@ -608,10 +596,10 @@ fn lldbinit(ctx: &Context) -> Check {
         .collect();
     if files.is_empty() {
         return check
-            .warn("Missing, so FString, TArray and friends show up as raw memory in the debugger")
-            .fix(fix("Load Unreal's formatters:"));
+            .warn("Missing, so FString, TSharedPtr, TObjectPtr and friends show up as raw memory in the debugger")
+            .fix(install("Install Salvage's Unreal formatters (adds one marked line):"));
     }
-    let imports: Vec<PathBuf> = files
+    let imports: Vec<Import> = files
         .iter()
         .filter_map(|f| std::fs::read_to_string(f).ok())
         .flat_map(|text| {
@@ -620,46 +608,59 @@ fn lldbinit(ctx: &Context) -> Check {
                 .collect::<Vec<_>>()
         })
         .collect();
-    if imports.is_empty() {
-        return check
-            .warn("Doesn't load Unreal's formatters, so FString, TArray and friends show up as raw memory")
-            .fix(fix("Load Unreal's formatters:"));
-    }
-    if let Some(good) = imports.iter().find(|p| p.is_file()) {
-        let mut check = check.pass(format!(
-            "Loads Unreal's formatters from {}",
-            ctx.tilde(good)
+    if let Some(ours) = imports.iter().find(|i| i.salvage && i.path.is_file()) {
+        return check.pass(format!(
+            "Loads Salvage's Unreal formatters from {}",
+            ctx.tilde(&ours.path)
         ));
+    }
+    if let Some(engine_import) = imports.iter().find(|i| !i.salvage && i.path.is_file()) {
+        let mut check = check
+            .pass(format!("Loads the engine's formatters from {}", ctx.tilde(&engine_import.path)))
+            .detail("Run `salvage lldb install` to add TSharedPtr, TObjectPtr, FText, TOptional, math types and more alongside them.");
         if let Some(engine) = ctx.engine
-            && !good.starts_with(&engine.root)
+            && !engine_import.path.starts_with(&engine.root)
         {
             check = check.detail("That's a different engine install than the one doctor checked; fine if it's the same version.");
         }
         return check;
     }
+    if let Some(stale) = imports.first() {
+        return check
+            .warn(format!(
+                "Imports formatters from {}, which no longer exists",
+                ctx.tilde(&stale.path)
+            ))
+            .fix(install(
+                "Install Salvage's formatters (and delete the stale line from your init file):",
+            ));
+    }
     check
-        .warn(format!(
-            "Imports formatters from {}, which no longer exists",
-            ctx.tilde(&imports[0])
-        ))
-        .fix(fix(
-            "Remove the stale line from ~/.lldbinit, then add the current one:",
-        ))
+        .warn("Doesn't load any Unreal formatters, so FString, TSharedPtr, TObjectPtr and friends show up as raw memory")
+        .fix(install("Install Salvage's Unreal formatters (backs up your file, adds one marked line):"))
 }
 
-/// The path in a `command script import ".../UEDataFormatters...py"` line.
-fn formatter_import(line: &str, home: &Path) -> Option<PathBuf> {
+/// A `command script import` line that loads Unreal formatters.
+struct Import {
+    path: PathBuf,
+    /// Salvage's own formatters, rather than the engine's.
+    salvage: bool,
+}
+
+fn formatter_import(line: &str, home: &Path) -> Option<Import> {
     let line = line.trim();
     if line.starts_with('#') {
         return None;
     }
     let rest = line.strip_prefix("command script import")?.trim();
     let path = rest.trim_matches(|c| c == '"' || c == '\'');
-    if !path.contains("UEDataFormatters") {
+    let salvage = path.contains(crate::lldb::SCRIPT_NAME);
+    if !salvage && !path.contains("UEDataFormatters") {
         return None;
     }
-    Some(match path.strip_prefix("~/") {
+    let path = match path.strip_prefix("~/") {
         Some(tail) => home.join(tail),
         None => PathBuf::from(path),
-    })
+    };
+    Some(Import { path, salvage })
 }
