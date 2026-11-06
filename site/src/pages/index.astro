@@ -4,6 +4,8 @@ import Bow from "../components/Bow.astro";
 import Waterline from "../components/Waterline.astro";
 import IconLighter from "../components/IconLighter.astro";
 import IconDrydock from "../components/IconDrydock.astro";
+import RidingHigher from "../components/RidingHigher.astro";
+import { stock, tier8, mb, SOUNDING_HREF } from "../lib/trim-sounding";
 import { logbookEntries, formatDate } from "../lib/logbook";
 
 const recent = (await logbookEntries()).slice(0, 3);
@@ -96,8 +98,9 @@ const recent = (await logbookEntries()).slice(0, 3);
           we're up against.
         </p>
         <p class="now">
-          In the box: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
-          and shows where the memory goes, and whether the run fits 8, 12 and 16 GB machines.
+          In the box: <a href="/charts/salvage-trim/"><code>salvage trim</code></a> gives a project memory tiers for 8,
+          12 and 16 GB machines, and <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a
+          memory capture and shows where the memory goes, and whether the run fits.
         </p>
       </div>
     </article>
@@ -120,7 +123,27 @@ const recent = (await logbookEntries()).slice(0, 3);
     </article>
   </section>
 
-  <Waterline above="var(--ground)" below="var(--ground-2)" shape="angle" />
+  <Waterline above="var(--ground)" below="var(--night-sea)" shape="angle" />
+
+  <section class="measured" aria-labelledby="measured-title">
+    <div class="wrap measured-grid">
+      <div class="measured-copy">
+        <h2 class="hull" id="measured-title">Measured, not guessed.</h2>
+        <p>
+          The first sounding is in. On Epic's Third Person template on a 16 GB Mac, <code>salvage trim</code>'s 8 GB
+          tier took the game from {mb(stock.mem)} MB to {mb(tier8.mem)} MB, and the frame rate didn't move.
+        </p>
+        <p>
+          It's one small project on one machine, and the smaller tiers ran on a 16 GB Mac rather than on 8 and 12 GB
+          ones. <a href={SOUNDING_HREF}>The sounding</a> has the method, the spread across runs, the frame-time cost
+          and the list of what it doesn't show yet.
+        </p>
+      </div>
+      <RidingHigher compact />
+    </div>
+  </section>
+
+  <Waterline above="var(--night-sea)" below="var(--ground-2)" shape="angle-reverse" />
 
   <section class="built">
     <div class="wrap">
@@ -154,16 +177,16 @@ const recent = (await logbookEntries()).slice(0, 3);
     <div>
       <h2 class="hull">One tool in the box. No release yet.</h2>
       <p>
-        The first tool is the <code>salvage</code> command, with four jobs so
-        far: <code>doctor</code>, <code>soundings</code>, <code>lldb</code> and <code>clangd</code>. You
+        The first tool is the <code>salvage</code> command, with five jobs so
+        far: <code>doctor</code>, <code>soundings</code>, <code>trim</code>, <code>lldb</code> and <code>clangd</code>. You
         can <a href="/charts/salvage-doctor/#get-salvage">build it from source</a> today. There's nothing to download
         yet.
       </p>
       <p>
-        None of it saves memory by itself. Doctor finds what's wrong with a Mac's setup, and soundings measures where a
-        game's memory goes. They're how we'll find what to fix, and how we'll check the fixes. When a change does cut
-        memory, it goes on the <a href="/manifest/">manifest</a> with its <a href="/soundings/">soundings</a>:
-        before-and-after numbers on real machines.
+        Trim is the first job that saves memory. Doctor finds what's wrong with a Mac's setup, and soundings measures
+        where a game's memory goes, which is how we find what to fix and check the fixes. Every change that cuts memory
+        goes on the <a href="/manifest/">manifest</a> with its <a href="/soundings/">soundings</a>: before-and-after
+        numbers on named machines.
       </p>
     </div>
     <div class="log">
@@ -424,6 +447,52 @@ const recent = (await logbookEntries()).slice(0, 3);
     font-family: var(--font-mono);
     font-size: 0.84em;
     font-weight: 500;
+  }
+
+  /* ---- The first sounding ---- */
+  .measured {
+    background: var(--night-sea);
+    color: var(--foam);
+    padding-block: var(--s-6) var(--s-7);
+  }
+  .measured-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--s-7);
+    align-items: center;
+  }
+  .measured h2 {
+    font-size: var(--step-4);
+    max-width: 12ch;
+  }
+  .measured p {
+    margin: var(--s-4) 0 0;
+    font-size: var(--step-0);
+    line-height: 1.6;
+    color: var(--steel);
+    max-width: 30rem;
+  }
+  .measured p:first-of-type {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--foam);
+  }
+  .measured a {
+    color: var(--sea-glass);
+  }
+  .measured code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+  }
+  .measured :global(.riding) {
+    padding: 0;
+    border-bottom: 0;
+  }
+  @media (max-width: 860px) {
+    .measured-grid {
+      grid-template-columns: 1fr;
+      gap: var(--s-5);
+    }
   }
 
   /* ---- How it's built ---- */

@@ -1,6 +1,6 @@
 ---
-import Page from "../layouts/Page.astro";
-import DraftReadout from "../components/DraftReadout.astro";
+import Page from "../../layouts/Page.astro";
+import DraftReadout from "../../components/DraftReadout.astro";
 ---
 <Page
   title="Soundings"
@@ -8,6 +8,15 @@ import DraftReadout from "../components/DraftReadout.astro";
 >
   <DraftReadout />
   <div class="prose">
+    <h2>Soundings so far</h2>
+    <ol class="soundings">
+      <li>
+        <a href="/soundings/trim-third-person-m4-16gb/">salvage trim, measured on a 16 GB Mac</a>
+        <span>November 2026. Epic's Third Person template, Apple M4 with 16 GB, stock against each of salvage trim's
+          three tiers, 4 runs each. Memory, frame time, and what it doesn't show yet.</span>
+      </li>
+    </ol>
+
     <h2>Why draft</h2>
     <p>
       On a ship, the draft is how deep the hull sits in the water, read off numbers painted on the bow. A ship that
@@ -38,3 +47,22 @@ import DraftReadout from "../components/DraftReadout.astro";
     </p>
   </div>
 </Page>
+<style>
+  .soundings {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 var(--s-6);
+    border-left: 3px solid var(--antifouling);
+  }
+  .soundings li {
+    padding: var(--s-2) 0 var(--s-2) var(--s-4);
+  }
+  .soundings a {
+    font-weight: 700;
+  }
+  .soundings span {
+    display: block;
+    margin-top: var(--s-1);
+    color: var(--muted);
+  }
+</style>

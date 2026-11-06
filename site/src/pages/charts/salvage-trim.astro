@@ -1,0 +1,506 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import RidingHigher from "../../components/RidingHigher.astro";
+import { stock, tier8, mb, signed, SOUNDING_HREF } from "../../lib/trim-sounding";
+import dryRun from "../../examples/trim-dry-run.txt?raw";
+import apply from "../../examples/trim-apply.txt?raw";
+import editor from "../../examples/trim-editor.txt?raw";
+import undo from "../../examples/trim-undo.txt?raw";
+import macEngine from "../../examples/trim-mac-engine.ini.txt?raw";
+
+const EPIC = "https://dev.epicgames.com/documentation/en-us/unreal-engine";
+const MEMORY = "/charts/unreal-memory-on-16-gb/";
+const captured = "Real output on a fresh copy of Epic's Third Person template (Blueprint), Unreal Engine 5.8.4, on an Apple M4 Mac.";
+
+// The tiers, from crates/salvage/src/trim/values.rs. "—" leaves whatever the
+// quality level sets.
+type Row = {
+  what: string;
+  cvar: string;
+  stock: string;
+  t16: string;
+  t12: string;
+  t8: string;
+  note?: string;
+};
+const tiers: Row[] = [
+  { what: "Nanite streaming pool", cvar: "r.Nanite.Streaming.StreamingPoolSize", stock: "512 MB", t16: "384 MB", t12: "320 MB", t8: "256 MB" },
+  { what: "Lumen surface cache atlas", cvar: "r.LumenScene.SurfaceCache.AtlasSize", stock: "4096 at Epic", t16: "—", t12: "2048", t8: "2048" },
+  { what: "Virtual shadow map pages", cvar: "r.Shadow.Virtual.MaxPhysicalPages", stock: "4096 at Epic", t16: "—", t12: "—", t8: "512" },
+  { what: "Texture streaming pool", cvar: "r.Streaming.PoolSize", stock: "1000 MB at Epic", t16: "—", t12: "—", t8: "400 MB", note: "Mac only" },
+  { what: "Garbage collection sweep", cvar: "gc.TimeBetweenPurgingPendingKillObjects", stock: "every 61.1 s", t16: "—", t12: "45 s", t8: "30 s" },
+  { what: "Discard foliage data on load", cvar: "foliage.DiscardDataOnLoad", stock: "off", t16: "—", t12: "—", t8: "on" },
+  { what: "Audio stream cache", cvar: "CacheSizeKB", stock: "64 MB", t16: "32 MB", t12: "32 MB", t8: "32 MB", note: "every machine" },
+];
+
+// Each setting: what it does, why this value, what the sounding showed.
+type Setting = {
+  id: string;
+  name: string;
+  values: string;
+  why: string[];
+  measured: string;
+  memory?: string;
+  docs?: { href: string; title: string };
+};
+const settings: Setting[] = [
+  {
+    id: "nanite",
+    name: "Nanite streaming pool",
+    values: "384, 320 and 256 MB, from 512 MB",
+    why: [
+      "Nanite streams the geometry the camera needs into a pool of a fixed size, and no quality level changes it. The pool is allocated up front, so a smaller one is less memory in every scene. When a view needs more mesh data than the pool holds, Nanite draws coarser detail until it fits.",
+    ],
+    measured: "128 MB less in Metal buffers with the 16 GB tier's 384 MB pool, and about 190 MB less tracked memory.",
+    memory: "nanite-pool",
+  },
+  {
+    id: "lumen",
+    name: "Lumen surface cache atlas",
+    values: "2048 on the 12 and 8 GB tiers",
+    why: [
+      "2048 is the Medium global illumination preset's size. High uses 3584 and Epic 4096. A smaller atlas means less memory, with lower-detail bounce lighting further from the camera.",
+      "No preset that uses Lumen goes below 2048, so this never adds memory at any quality level.",
+    ],
+    measured: "400 MB out of the render target pool, and about 1.6 ms less GPU time a frame.",
+    memory: "lumen-surface-cache",
+    docs: { href: `${EPIC}/lumen-technical-details-in-unreal-engine`, title: "Lumen Technical Details" },
+  },
+  {
+    id: "shadows",
+    name: "Virtual shadow map pages",
+    values: "512 on the 8 GB tier",
+    why: [
+      "512 is what the Low and Medium shadow presets use. High uses 2048 and Epic 4096. At High and Epic, shadows get blurrier.",
+      "Only the 8 GB tier pins it. On bigger machines, a pin above 512 would add memory at Low and Medium.",
+    ],
+    measured: "The shadow page pool went from 512 MB to 64 MB. No run logged a page pool overflow.",
+    memory: "virtual-shadow-maps",
+    docs: { href: `${EPIC}/virtual-shadow-maps-in-unreal-engine`, title: "Virtual Shadow Maps" },
+  },
+  {
+    id: "textures",
+    name: "Texture streaming pool",
+    values: "400 MB on the 8 GB tier, Mac only",
+    why: [
+      "400 MB is what the Low texture preset uses. Medium uses 600, High 800 and Epic 1000. When a scene wants more texture data than the pool holds, textures drop to lower-detail mips.",
+      "It's Mac only because Apple silicon shares memory between the CPU and GPU, so the pool comes out of the machine's RAM. On a PC with a graphics card, it lives in the card's memory.",
+    ],
+    measured: "Nothing yet. The template's level needs about 10 MB of streaming textures, so the pool never filled.",
+    memory: "texture-pool",
+    docs: { href: `${EPIC}/texture-streaming-configuration-in-unreal-engine`, title: "Texture Streaming Configuration" },
+  },
+  {
+    id: "gc",
+    name: "Garbage collection sweep",
+    values: "Every 45 s on the 12 GB tier, 30 s on the 8 GB tier",
+    why: [
+      "Unreal frees objects nothing refers to in a regular sweep, every 61.1 seconds in the engine's config. Sweeping more often gives that memory back sooner.",
+    ],
+    measured: "Nothing yet. The template makes little garbage.",
+    memory: "garbage-collection",
+    docs: { href: `${EPIC}/garbage-collection-settings-in-the-unreal-engine-project-settings`, title: "Garbage Collection Settings" },
+  },
+  {
+    id: "foliage",
+    name: "Discard foliage data on load",
+    values: "On for the 8 GB tier",
+    why: [
+      "Drops foliage instance data on load, but only for foliage types that allow it with their Enable Discard On Load option. Other foliage is untouched.",
+      "Landscape grass has a setting like it, grass.DiscardDataOnLoad, and salvage trim leaves that one alone: discarding grass removes it entirely.",
+    ],
+    measured: "Nothing yet. The template has no foliage.",
+  },
+  {
+    id: "audio",
+    name: "Audio stream cache",
+    values: "32 MB, from 64 MB, on every machine",
+    why: [
+      "The cache holds compressed chunks of sounds set to stream. Half the size still keeps several seconds of many streams loaded. If streamed audio stutters, raise it.",
+      "This one isn't tiered. It's set in each platform's own settings, so it applies on every Mac, Windows and Linux machine, the big ones too.",
+    ],
+    measured: "Nothing yet. The template has no streamed sound.",
+    memory: "audio-cache",
+    docs: { href: `${EPIC}/an-overview-of-audio-stream-caching-in-unreal-engine`, title: "An overview of Audio Stream Caching" },
+  },
+];
+---
+<Page
+  title="Fit an Unreal game to 8, 12 and 16 GB machines"
+  compact
+  description="How to use salvage trim to give an Unreal Engine project memory tiers for 8, 12 and 16 GB machines: the tiers, how to preview, apply and undo them, every setting with its reason and Epic's docs, and what it saved when we measured it."
+  dek="salvage trim writes memory tiers into a project's config, so the game uses less memory on 8, 12 and 16 GB machines and bigger machines keep Epic's defaults. Every value comes with its reason, and one command takes it all out."
+>
+  <div class="prose wide">
+    <p class="lede">
+      On Epic's Third Person template on a 16 GB Mac, the 8 GB tier took the game from {mb(stock.mem)} MB
+      to {mb(tier8.mem)} MB, {signed(tier8.mem - stock.mem)} MB, with no change in frame rate. That's one small
+      project on one machine, and <a href={SOUNDING_HREF}>the sounding</a> says what it doesn't show yet.
+    </p>
+  </div>
+
+  <RidingHigher />
+
+  <div class="prose wide">
+    <h2>What you need</h2>
+    <ul>
+      <li>
+        <strong>An Unreal Engine project.</strong> Blueprint or C++. It's been tried with Unreal Engine 5.8.4.
+      </li>
+      <li><strong>The <code>salvage</code> command.</strong> See <a href="#get-salvage">Get it</a> below.</li>
+    </ul>
+
+    <h2>How each machine gets its tier</h2>
+    <p>
+      Unreal sorts machines into memory buckets by how much RAM they have, and a device profile can give each bucket its
+      own settings. Epic's <a href={`${EPIC}/setting-up-device-profiles-in-unreal-engine`}>Setting Up Device
+      Profiles</a> page covers both. Out of the box, the desktop profiles don't change any memory setting per bucket.
+      salvage trim sets the bucket sizes for Mac, Windows and Linux, and gives three of them a tier:
+    </p>
+    <table class="buckets">
+      <thead>
+        <tr><th scope="col">Machine</th><th scope="col">Bucket</th><th scope="col">Gets</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>32 GB and up</td><td>Largest</td><td>Stock settings</td></tr>
+        <tr><td>17 to 31 GB</td><td>Larger</td><td>Stock settings</td></tr>
+        <tr><td>14 to 16 GB</td><td>Default</td><td>The 16 GB tier</td></tr>
+        <tr><td>10 to 13 GB</td><td>Smaller</td><td>The 12 GB tier</td></tr>
+        <tr><td>Under 10 GB</td><td>Smallest</td><td>The 8 GB tier</td></tr>
+      </tbody>
+    </table>
+    <p>
+      It doesn't set a minimum. Unreal has a setting for one, but with it set, the engine refuses to start on machines
+      below it.
+    </p>
+
+    <h2>The tiers</h2>
+    <p>
+      A dash leaves the setting to the quality level, as stock does. The stock column is Unreal Engine 5.8's default at
+      Epic quality, where that's what decides it.
+    </p>
+    <div class="table-scroll">
+      <table class="tiers">
+        <thead>
+          <tr>
+            <th scope="col">Setting</th>
+            <th scope="col">Stock</th>
+            <th scope="col">16 GB</th>
+            <th scope="col">12 GB</th>
+            <th scope="col">8 GB</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tiers.map((t) => (
+            <tr>
+              <th scope="row">
+                {t.what}
+                <code>{t.cvar}</code>
+                {t.note && <span class="note">{t.note}</span>}
+              </th>
+              <td class="stock">{t.stock}</td>
+              <td class:list={{ same: t.t16 === "—" }}>{t.t16}</td>
+              <td class:list={{ same: t.t12 === "—" }}>{t.t12}</td>
+              <td class:list={{ same: t.t8 === "—" }}>{t.t8}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <strong>No tier gives a quality level more memory than it had.</strong> A device profile's value wins over every
+      quality preset, so a pin applies at Low as much as at Epic. salvage trim only pins a value that's no higher than
+      any preset that uses the feature. That's why only the 8 GB tier touches shadows and textures: a pin anywhere else
+      would add memory for someone playing at Low.
+    </p>
+
+    <h2>1. Preview it</h2>
+    <p>In your project's folder, see what would change before anything does:</p>
+    <Terminal command="salvage trim --dry-run" output={dryRun} caption={`${captured} The full dry run goes on to print every block it would write, 201 lines here.`} />
+    <p>
+      Pass <code>--project</code> with a <code>.uproject</code> or its folder to run it from somewhere else.
+    </p>
+
+    <h2>2. Apply it</h2>
+    <Terminal command="salvage trim" output={apply} caption={captured} />
+    <p>
+      Restart the editor or the game to pick the settings up. Run it again and it reports each file as already up to
+      date; after an update to Salvage, it rewrites its blocks in place.
+    </p>
+
+    <h2>What it changes</h2>
+    <p>Everything goes in the project's <code>Config</code> folder:</p>
+    <ul>
+      <li><code>DefaultDeviceProfiles.ini</code>: the tiers, for Mac, Windows and Linux.</li>
+      <li>
+        <code>Mac/MacEngine.ini</code>, <code>Windows/WindowsEngine.ini</code> and <code>Linux/LinuxEngine.ini</code>:
+        the bucket sizes, and the audio stream cache.
+      </li>
+      <li>
+        With <code>--editor</code>, also <code>DefaultEngine.ini</code> and <code>DefaultEditorPerProjectUserSettings.ini</code>.
+      </li>
+    </ul>
+    <p>
+      Each addition is one block between a begin and an end marker, with the reason for every value written above it
+      and a link to Epic's page for the setting where there is one. If a file already exists, salvage trim backs it up
+      first, next to the original, as <code>&lt;name&gt;.salvage-backup-</code> followed by a number. Here's one of the
+      files it wrote:
+    </p>
+    <Terminal command="cat Config/Mac/MacEngine.ini" output={macEngine} marks={false} caption={captured} />
+    <p>
+      These are ordinary project config files, so they belong in version control with the rest of <code>Config</code>,
+      and everyone on the project gets the same tiers.
+    </p>
+
+    <h2>3. Undo it</h2>
+    <p>
+      <code>salvage trim --undo</code> takes every block out again. A file that held nothing but Salvage's block is
+      deleted. Any other file is backed up, then has the block taken out. Add <code>--dry-run</code> to see what it
+      would do first.
+    </p>
+    <Terminal command="salvage trim --undo" output={undo} caption={captured} />
+    <p>
+      Restart the editor or game for the stock settings to come back. Every setting is back as it was; whitespace at
+      the end of a file can differ, and the backup has the file exactly as it was before.
+    </p>
+
+    <h2>The settings, and why</h2>
+    <p>
+      The reasons here are the ones salvage trim writes into your config. "Measured" is what
+      the <a href={SOUNDING_HREF}>sounding on the Third Person template</a> showed. <a href={MEMORY}>Where Unreal's memory
+      goes on a 16 GB machine</a> explains each budget and its defaults.
+    </p>
+  </div>
+
+  <ol class="settings">
+    {settings.map((s) => (
+      <li id={s.id}>
+        <h3 class="hull">{s.name}</h3>
+        <p class="values">{s.values}</p>
+        {s.why.map((p) => <p>{p}</p>)}
+        <dl>
+          <div class:list={{ none: s.measured.startsWith("Nothing") }}>
+            <dt>Measured</dt>
+            <dd>{s.measured}</dd>
+          </div>
+          {(s.docs || s.memory) && (
+            <div>
+              <dt>Read more</dt>
+              <dd>
+                {s.docs && <a href={s.docs.href}>{s.docs.title}</a>}
+                {s.docs && s.memory && <span class="sep"> · </span>}
+                {s.memory && <a href={`${MEMORY}#${s.memory}`}>What it is, and its defaults</a>}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </li>
+    ))}
+  </ol>
+
+  <div class="prose wide">
+    <h2>The editor preset</h2>
+    <p>
+      <code>salvage trim --editor</code> adds settings for working in the editor on a smaller machine. It hasn't been
+      measured yet.
+    </p>
+    <Terminal command="salvage trim --editor" output={editor} caption={captured} />
+    <ul>
+      <li>
+        <strong>A memory limit for shader compile workers:</strong> 4 GB between them on the 16 GB tier, 3 GB on 12 GB
+        and 2 GB on 8 GB (<code>r.ShaderCompiler.MemoryLimit</code>). There's no limit by default. Above it, the editor
+        pauses workers and reschedules their jobs instead of pushing the machine into swap.
+      </li>
+      <li>
+        <strong>Fewer workers:</strong> 5 cores left free of shader compiling instead of 3, and 6 instead of 4 while a
+        game or Play In Editor session runs. Each worker can use from a few hundred MB to over 1 GB on heavy materials,
+        so fewer workers means a lower peak, and slower first compiles.
+      </li>
+      <li>
+        <strong>Static Content Browser thumbnails.</strong> Realtime thumbnails keep rendering material and mesh
+        previews, which costs graphics memory and time. Anyone can turn them back on in their own Content Browser
+        settings.
+      </li>
+      <li>
+        <strong>Virtual texture pools stay their configured size</strong> instead of growing when they run short
+        (<code>r.VT.PoolAutoGrow=0</code>). That's already the default in 5.8; it's written down so nothing else turns
+        it on.
+      </li>
+    </ul>
+    <p>
+      Running <code>salvage trim</code> again without <code>--editor</code> takes the editor preset back out and
+      leaves the game tiers.
+    </p>
+
+    <h2>What it leaves out</h2>
+    <p>Some settings looked worth trying and were measured out:</p>
+    <ul>
+      <li>
+        <strong>A lower render target pool floor</strong> (<code>r.RenderTargetPoolMin</code>) made no difference: it
+        only frees render targets that have gone unused.
+      </li>
+      <li>
+        <strong>Low-memory garbage collection</strong> (<code>gc.LowMemory.*</code>) turns on when free memory runs
+        low, and macOS keeps free memory under 2 GB on a busy 16 GB Mac, so it was on all the time and saved nothing.
+      </li>
+      <li>
+        <strong>Texture pool pins on the 16 and 12 GB tiers</strong> would add memory at lower texture quality, since a
+        pin overrides the presets.
+      </li>
+    </ul>
+
+    <h2>Where it's been tried</h2>
+    <ul>
+      <li>
+        On macOS with Unreal Engine 5.8.4, on Epic's Third Person template, run as a game from the editor.
+        The <a href={SOUNDING_HREF}>sounding</a> has the numbers.
+      </li>
+      <li>
+        Not on a real 8 or 12 GB machine. Those tiers were measured on a 16 GB Mac told to use them.
+      </li>
+      <li>Not in a packaged build, and not on a large project.</li>
+      <li>
+        On Windows and Linux, only in unit tests. They get the same tiers, without the texture pool, but nobody has run
+        a game with them there yet.
+      </li>
+    </ul>
+    <p>
+      If you try it on another machine or a bigger project, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> with
+      before-and-after numbers would help. <a href="/charts/capturing-memory-runs/">Capture memory runs you can
+      compare</a> shows how to take them.
+    </p>
+
+    <GetSalvage />
+  </div>
+</Page>
+<style>
+  /* Long file names, such as DefaultEditorPerProjectUserSettings.ini, break
+     rather than push the page sideways on a phone. */
+  .prose code {
+    overflow-wrap: anywhere;
+  }
+  .lede {
+    font-size: var(--step-1);
+    line-height: 1.55;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    margin-block: var(--s-5);
+  }
+  table {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+  .buckets {
+    margin-block: var(--s-5);
+  }
+  th,
+  td {
+    text-align: left;
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--text);
+  }
+  .tiers {
+    width: 100%;
+    min-width: 38rem;
+  }
+  .tiers tbody th {
+    font-weight: 700;
+  }
+  .tiers tbody th code,
+  .tiers .note {
+    display: block;
+    font-weight: 400;
+  }
+  .tiers tbody th code {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    overflow-wrap: anywhere;
+  }
+  .tiers .note {
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+  .tiers td {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tiers td.stock {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .tiers td.same {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .settings {
+    list-style: none;
+    margin: var(--s-6) 0 var(--s-8);
+    padding: 0;
+    max-width: 52rem;
+    border-left: 3px solid var(--antifouling);
+  }
+  .settings > li {
+    padding: var(--s-5) 0 var(--s-5) var(--s-5);
+  }
+  .settings > li + li {
+    border-top: 2px solid var(--rule);
+  }
+  .settings h3 {
+    margin: 0;
+    font-size: var(--step-2);
+  }
+  .settings .values {
+    margin: var(--s-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .settings p {
+    margin: var(--s-3) 0 0;
+    max-width: var(--measure);
+  }
+  .settings dl {
+    margin: var(--s-4) 0 0;
+    font-size: var(--step--1);
+  }
+  .settings dl > div {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding-block: var(--s-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  .settings dt {
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .settings dd {
+    margin: 0;
+  }
+  .settings .none dd {
+    color: var(--muted);
+  }
+  @media (max-width: 600px) {
+    .settings > li {
+      padding-left: var(--s-4);
+    }
+    .settings dl > div {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+  }
+</style>

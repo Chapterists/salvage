@@ -1,0 +1,9 @@
+
+  salvage trim  TP_ThirdPersonBP
+  ✓ Removed Config/DefaultDeviceProfiles.ini (it only held Salvage's block)
+  ✓ Removed Config/Mac/MacEngine.ini (it only held Salvage's block)
+  ✓ Removed Config/Windows/WindowsEngine.ini (it only held Salvage's block)
+  ✓ Removed Config/Linux/LinuxEngine.ini (it only held Salvage's block)
+
+  Restart the editor or game for the stock settings to come back.
+
