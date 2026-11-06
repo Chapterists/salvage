@@ -1,6 +1,6 @@
 # Salvage site
 
-The source for the Salvage website: a static site built with [Astro](https://astro.build). It isn't hosted anywhere yet.
+The source for the Salvage website: a static site built with [Astro](https://astro.build), served by a Cloudflare Worker at salvage.chapterists.com once it's switched on. [docs/deploying-the-site.md](../docs/deploying-the-site.md) covers how.
 
 ## Run it
 
@@ -13,7 +13,7 @@ npm run dev       # http://localhost:4321, reloads as you edit
 npm run build     # writes the static site to site/dist/
 ```
 
-CI builds the site on every pull request that touches it (`.github/workflows/site.yml`). It doesn't deploy.
+CI builds the site on every pull request that touches it (`.github/workflows/site.yml`). Pushes to `main` that touch it run `.github/workflows/deploy-site.yml`, which deploys only once the Cloudflare secrets exist; until then it does nothing.
 
 ## Where things are
 
@@ -29,6 +29,9 @@ CI builds the site on every pull request that touches it (`.github/workflows/sit
 | `src/components/` | The mark, wordmark, waterline dividers, the hero bow and the workstream icons. All hand-drawn SVG. |
 | `src/styles/tokens.css` | Colors, type, spacing, and the night and day themes. |
 | `public/fonts/` | Self-hosted fonts, each with its license. |
+| `public/_headers` | Security headers and caching, read by Cloudflare when the site is served. |
+| `public/robots.txt`, `src/pages/sitemap.xml.ts` | For search engines. The sitemap lists every page except the 404. |
+| `wrangler.jsonc` | The Cloudflare Worker that serves `dist/` at salvage.chapterists.com. |
 | `public/` (icons) | `favicon.svg`, `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` and `site.webmanifest`, all drawn from the lifebuoy. The PNGs are rendered from `favicon.svg` and `assets/brand/salvage-app-icon.svg`. |
 | `public/social-preview.png` | The 1280 x 640 image link previews use, a copy of `assets/brand/social-preview.png`. Its source is `assets/brand/social-preview.html`. |
 
@@ -53,5 +56,6 @@ One or two plain sentences: what changed and why it matters.
 - **The waterline** is the section break: a flat, crisp line between two colors, angled or gently rolling.
 - **Rescue Orange, big, once per page.** The home page uses it for one full-width band. Everywhere else it stays small: the lifebuoy, the bulwark, a list marker.
 - **Labels:** headings carry the structure. No small spaced-capital labels above them. The one mono label style is for dates.
+- **Content-Security-Policy:** every page carries one in a `<meta>` tag, with hashes Astro works out at build time (`security.csp` in `astro.config.mjs`), and `public/_headers` adds `frame-ancestors`. Scripts, styles, fonts and images all have to come from the site itself. Adding anything from another domain, such as analytics, means adding that domain to the policy.
 - **Motion** is small and optional: the lifebuoy bobs, and the workstream icons move on hover. All of it stops under `prefers-reduced-motion`.
 - **Copy:** plain and specific, numbers over adjectives, American spelling, no em dashes. Never describe something as available before it ships.

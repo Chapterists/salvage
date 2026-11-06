@@ -9,10 +9,11 @@ interface Props {
   description?: string;
   /** A smaller title, for long ones such as chart names. */
   compact?: boolean;
+  noindex?: boolean;
 }
-const { title, dek, description, compact = false } = Astro.props;
+const { title, dek, description, compact = false, noindex = false } = Astro.props;
 ---
-<Base title={title} description={description ?? dek}>
+<Base title={title} description={description ?? dek} noindex={noindex}>
   <section class="band">
     <div class="wrap">
       <h1 class:list={["hull", { compact }]}>{title}</h1>

@@ -1,0 +1,26 @@
+# Response headers for every file the Worker serves (Cloudflare static assets
+# read this file and don't serve it). The Content-Security-Policy for scripts
+# and styles is a <meta> tag on each page, with hashes Astro computes at build
+# time (security.csp in astro.config.mjs). The header below adds the parts a
+# <meta> tag can't carry.
+
+/*
+  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Astro's build output has content hashes in its file names, so it never
+# changes in place.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts keep their names between versions; a month is plenty.
+/fonts/*
+  Cache-Control: public, max-age=2592000
+
+# Pages and everything else use Cloudflare's default: revalidate every time,
+# so a deploy shows up immediately.

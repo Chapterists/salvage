@@ -6,10 +6,13 @@ import Footer from "../components/Footer.astro";
 interface Props {
   title?: string;
   description?: string;
+  /** Keep the page out of search results and the sitemap (the 404 page). */
+  noindex?: boolean;
 }
 const {
   title,
   description = "Chapterists' open-source toolbox: the tools we use to make our stories. Starting with Unreal Engine: lighter on low-RAM machines, better on a Mac.",
+  noindex = false,
 } = Astro.props;
 const fullTitle = title ? `${title} · Salvage` : "Salvage: Chapterists' open-source toolbox";
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -26,7 +29,8 @@ const socialImageAlt =
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <link rel="sitemap" href="/sitemap.xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

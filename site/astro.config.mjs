@@ -33,6 +33,29 @@ const dropH1 = {
 export default defineConfig({
   site: "https://salvage.chapterists.com",
   trailingSlash: "always",
+  // A Content-Security-Policy in a <meta> tag on every page, with hashes for
+  // the scripts and styles Astro emits. Inline style attributes (the waterline
+  // dividers and Shiki's code colors use them) can't be hashed, so they're
+  // allowed through style-src-attr only. frame-ancestors can't go in a <meta>
+  // tag; public/_headers sends it as a header.
+  security: {
+    csp: {
+      directives: [
+        "default-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ],
+      styleDirective: {
+        resources: [
+          { resource: "'self'", kind: "element" },
+          { resource: "'unsafe-inline'", kind: "attribute" },
+        ],
+      },
+    },
+  },
   markdown: {
     processor: satteri({ hastPlugins: [repoLinks, dropH1] }),
     shikiConfig: { theme: "css-variables" },
