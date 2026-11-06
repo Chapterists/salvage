@@ -1,0 +1,184 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import first from "../../examples/clangd-first.txt?raw";
+import refresh from "../../examples/clangd-refresh.txt?raw";
+import refreshAdded from "../../examples/clangd-refresh-added.txt?raw";
+import dotClangd from "../../examples/clangd-dotclangd.txt?raw";
+import vscodeSettings from "../../examples/clangd-vscode.json.txt?raw";
+
+const trimmed =
+  "Real output on a 16 GB Apple M4 with Unreal Engine 5.8.4 and Epic's Third Person C++ template. The project path is shortened, and UnrealBuildTool's own log is trimmed where you see ...";
+---
+<Page
+  title="Write Unreal C++ in VS Code or Neovim"
+  compact
+  description="How to use salvage clangd to set up clangd for an Unreal Engine C++ project on a Mac, so VS Code or Neovim can complete, navigate and check your code without Xcode's indexer."
+  dek="clangd, the C++ language server, gives VS Code and Neovim completion, go-to-definition and live errors. salvage clangd sets it up for an Unreal project from the exact compile commands UnrealBuildTool uses, so you can write C++ without opening Xcode."
+>
+  <div class="prose wide">
+    <h2>What you need</h2>
+    <ul>
+      <li>
+        <strong>A Mac with Xcode installed.</strong> You don't open it, but UnrealBuildTool and clangd use its compiler
+        and SDK. <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> checks your Xcode against your
+        engine.
+      </li>
+      <li>
+        <strong>An Unreal C++ project:</strong> a <code>.uproject</code> with at least
+        one <code>Source/*.Target.cs</code>. A Blueprint-only project has no C++ to index; add a C++ class from the editor
+        first.
+      </li>
+      <li>
+        <strong>clangd.</strong> Xcode includes one, at <code>/usr/bin/clangd</code> (Apple clangd 21 with Xcode 27.2).
+        The one in Homebrew's <code>llvm</code> works too.
+      </li>
+      <li><strong>VS Code</strong> with the clangd extension, <strong>or Neovim</strong>.</li>
+      <li><strong>The <code>salvage</code> command.</strong> See <a href="#get-salvage">Get it</a> below.</li>
+    </ul>
+
+    <h2>1. Generate the compile database</h2>
+    <p>In your project's folder, run <code>salvage clangd</code> with the editor you use:</p>
+    <pre><code>cd ~/Projects/TP_ThirdPerson
+salvage clangd --vscode     # or --neovim, or both</code></pre>
+    <Terminal command="salvage clangd --vscode" output={first} caption={trimmed} />
+    <p>
+      Salvage runs UnrealBuildTool in its <code>GenerateClangDatabase</code> mode, which
+      writes <code>compile_commands.json</code> into the project: every source file, with the exact flags it's compiled
+      with. It indexes the editor target in the Development configuration unless you
+      pass <code>--target</code> or <code>--configuration</code>. On this machine that took 7 seconds for 44 files. Pass <code>--dry-run</code> to
+      see the UnrealBuildTool command without running anything.
+    </p>
+    <p>
+      If your project has never been built, salvage warns that some <code>.generated.h</code> headers are missing.
+      Build the target once so UnrealHeaderTool writes them. Until then, clangd flags every <code>UCLASS</code>.
+    </p>
+
+    <h2>2. Open it in your editor</h2>
+    <h3>VS Code</h3>
+    <ol>
+      <li>Install the <strong>clangd</strong> extension by LLVM from the Extensions view.</li>
+      <li>Open the project's folder: File, then Open Folder.</li>
+      <li>Open any <code>.cpp</code> file. clangd starts and indexes the project in the background.</li>
+    </ol>
+    <p>
+      <code>--vscode</code> wrote <code>.vscode/settings.json</code>. It starts clangd with the flags below and turns
+      off the Microsoft C/C++ extension's IntelliSense, so the two don't fight over the same files. Any settings you
+      already had there are kept.
+    </p>
+    <Terminal command="cat .vscode/settings.json" output={vscodeSettings} marks={false} />
+
+    <h3>Neovim</h3>
+    <ol>
+      <li>
+        Turn on project-local config in your own config: <code>vim.o.exrc = true</code>. That needs Neovim 0.9 or
+        newer.
+      </li>
+      <li>Start Neovim in the project's folder. It asks whether to trust <code>.nvim.lua</code>; say yes.</li>
+      <li>Open any <code>.cpp</code> file.</li>
+    </ol>
+    <p>
+      <code>--neovim</code> wrote <code>.nvim.lua</code>. It starts clangd with the same flags, through Neovim's
+      built-in <code>vim.lsp.config</code> where it exists, or <code>nvim-lspconfig</code> if you have it installed.
+    </p>
+
+    <h2>3. Check it</h2>
+    <p>clangd can check a file on its own, which is a quick way to see that the setup works before you open an editor:</p>
+    <pre><code>clangd --check=Source/TP_ThirdPerson/TP_ThirdPersonCharacter.cpp</code></pre>
+    <p>
+      clangd prints a long log. The line that matters is the last one, which on this project
+      read <code>All checks completed, 0 errors</code> after about 4 seconds with Xcode's clangd. Homebrew's clangd gave
+      the same result, and so did the project's headers.
+    </p>
+
+    <h2>4. Keep it current</h2>
+    <p>
+      The database lists files and flags, so it goes stale when you add or remove a source file, or change
+      a <code>.Build.cs</code>, <code>.Target.cs</code>, <code>.uproject</code> or <code>.uplugin</code>.
+      Run <code>salvage clangd --refresh</code> after those. It only runs UnrealBuildTool when something that shapes
+      the database has changed:
+    </p>
+    <Terminal command="salvage clangd --vscode --refresh" output={refresh} caption="Nothing changed, so it skipped UnrealBuildTool. This run took 0.01 seconds." />
+    <Terminal
+      command="salvage clangd --vscode --refresh"
+      output={refreshAdded}
+      caption="After adding one .cpp file. UnrealBuildTool's log is trimmed at ..."
+    />
+    <p>
+      Editing code inside existing files, or adding headers, doesn't need a refresh. clangd works those out on its
+      own.
+    </p>
+
+    <h2>What it changes</h2>
+    <p>Everything goes inside the project folder:</p>
+    <ul>
+      <li><code>compile_commands.json</code>, written by UnrealBuildTool.</li>
+      <li><code>.clangd</code>, clangd's settings for this project.</li>
+      <li><code>.vscode/settings.json</code>, with <code>--vscode</code>.</li>
+      <li><code>.nvim.lua</code>, with <code>--neovim</code>.</li>
+      <li><code>Intermediate/Salvage/clangd.json</code>, a record of what the database was made from, for <code>--refresh</code>.</li>
+    </ul>
+    <p>
+      If <code>.clangd</code>, <code>.vscode/settings.json</code> or <code>.nvim.lua</code> already exists and would
+      change, salvage backs it up first, next to the original, as <code>&lt;name&gt;.salvage-backup-</code> followed
+      by a number. If nothing would change, it leaves the file alone.
+    </p>
+    <p>
+      <code>compile_commands.json</code> holds absolute paths to your engine and project, so it only makes sense on
+      your machine. Keep it out of version control. <code>.clangd</code> is safe to share.
+    </p>
+
+    <h2>Undo it</h2>
+    <p>There's no uninstall command, because everything is a file in your project. To take it all out:</p>
+    <ol>
+      <li>
+        Delete <code>compile_commands.json</code>, <code>.nvim.lua</code> and <code>Intermediate/Salvage/</code>.
+      </li>
+      <li>
+        Delete <code>.clangd</code> and <code>.vscode/settings.json</code>, or, if you had your own before, put back
+        the <code>.salvage-backup-</code> copy next to each.
+      </li>
+    </ol>
+
+    <h2>The settings it writes</h2>
+    <p>
+      The <code>.clangd</code> keeps Unreal's warnings as warnings while you edit (Unreal builds with warnings as
+      errors), turns off the include checks that Unreal's include conventions trip, skips the standard library index to
+      save memory, and stays quiet about the headers UnrealHeaderTool generates. It's yours to edit.
+    </p>
+    <Terminal command="cat .clangd" output={dotClangd} marks={false} />
+    <p>The editor settings start clangd with these flags:</p>
+    <ul>
+      <li><code>--background-index</code>: index the whole project while you work.</li>
+      <li><code>--header-insertion=never</code>: Unreal headers need their includes in a set order, so you add them.</li>
+      <li><code>--completion-style=detailed</code>: show each overload separately.</li>
+      <li><code>--pch-storage=disk</code>: keep precompiled preambles on disk instead of in memory, since Unreal's are large.</li>
+      <li>
+        <code>--query-driver</code> pointing at Xcode's clang (on a Mac): lets clangd ask the compiler in the database
+        for its system include paths.
+      </li>
+    </ul>
+
+    <h2>Where it's been tried</h2>
+    <ul>
+      <li>
+        On macOS with Unreal Engine 5.8.4, on Epic's Blank and Third Person C++ templates. Both indexed with 0 clangd
+        errors.
+      </li>
+      <li>
+        On Windows and Linux, only in unit tests. It knows the right UnrealBuildTool script and platform for each, but
+        nobody has run it there on a real project yet.
+      </li>
+      <li>
+        Not yet on a large project. Generating the database and indexing will take longer there, and we don't have
+        numbers for it.
+      </li>
+    </ul>
+    <p>
+      If you try it on Windows, Linux or a big project, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> with what happened would help.
+    </p>
+
+    <GetSalvage />
+  </div>
+</Page>

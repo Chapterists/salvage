@@ -56,6 +56,13 @@ salvage lldb uninstall   # takes it out again
 
 It covers `FString`, `FUtf8String`, `FName`, `FText`, `TStringView`, `TArray`, `TArrayView`, `TSharedPtr`, `TSharedRef`, `TWeakPtr`, `TUniquePtr`, `TObjectPtr`, `FSoftObjectPath`, `TSoftObjectPtr`, `TSoftClassPtr`, `TOptional`, `TVariant`, `FGuid`, `FGameplayTag`, and the math types `FVector`, `FVector2D`, `FVector4`, `FRotator`, `FQuat`, `FTransform`, `FIntPoint`, `FIntVector`, `FColor` and `FLinearColor`. The formatters were written from scratch; [crates/salvage/lldb/README.md](crates/salvage/lldb/README.md) has the details.
 
+**`salvage clangd`** sets up clangd for a project's C++, so VS Code or Neovim can complete, navigate and check Unreal code without Xcode's indexer. It runs UnrealBuildTool to write `compile_commands.json` into the project and adds a `.clangd` tuned for Unreal. With `--vscode` or `--neovim` it also writes that editor's settings, backing up anything it replaces. `--refresh` only reruns UnrealBuildTool when build rules or the set of source files changed. Everything it writes is inside the project; delete the files (or restore the backups) to undo it. It's been tried on macOS with Epic's C++ templates. Windows and Linux are covered by unit tests only, and it hasn't been tried on a large project yet.
+
+```sh
+salvage clangd --vscode            # or --neovim; run in the project folder
+salvage clangd --vscode --refresh  # after adding source files or changing Build.cs
+```
+
 #### Get it
 
 There's no release yet, so build it from source. You need Git and a stable Rust toolchain ([rustup.rs](https://rustup.rs)).

@@ -1,0 +1,14 @@
+
+  salvage clangd  TP_ThirdPerson with Unreal Engine 5.8.4 at /Users/Shared/Epic Games/UE_5.8
+
+  Running UnrealBuildTool for TP_ThirdPersonEditor (Mac Development). This usually takes under a minute.
+
+...
+
+  ✓ Wrote compile_commands.json (45 files), because source files were added or removed (42 → 43)
+  ✓ .clangd is already set up
+  ✓ .vscode/settings.json is already set up
+
+  Open the project folder in an editor with clangd. Run `salvage clangd --refresh`
+  after adding source files or changing Build.cs files.
+
