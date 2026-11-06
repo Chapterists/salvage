@@ -2,7 +2,7 @@
 //! toolbox of the tools we use to make our stories.
 //!
 //! Its subcommands check, measure and set up Unreal Engine work: `doctor`,
-//! `soundings`, `lldb` and `clangd`. The binary is a thin layer over this crate.
+//! `soundings`, `trim`, `lldb`, `clangd` and `refit`. The binary is a thin layer over this crate.
 
 pub mod clangd;
 pub mod doctor;
@@ -13,6 +13,7 @@ pub mod jsonc;
 pub mod lldb;
 pub mod probe;
 pub mod project;
+pub mod refit;
 pub mod soundings;
 pub mod trim;
 pub mod ui;
