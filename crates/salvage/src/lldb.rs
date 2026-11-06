@@ -517,10 +517,18 @@ mod tests {
             Layout::for_user(home.clone(), Os::Linux, none).script(),
             home.join(".local/share/salvage/lldb/salvage_unreal.py")
         );
-        let xdg = |k: &str| (k == "XDG_DATA_HOME").then(|| "/data".to_string());
+        // An absolute path on whichever OS runs the test.
+        let data = std::env::temp_dir().join("data");
+        let xdg = |k: &str| (k == "XDG_DATA_HOME").then(|| data.to_string_lossy().into_owned());
         assert_eq!(
-            Layout::for_user(home, Os::Linux, xdg).script(),
-            PathBuf::from("/data/salvage/lldb/salvage_unreal.py")
+            Layout::for_user(home.clone(), Os::Linux, xdg).script(),
+            data.join("salvage/lldb/salvage_unreal.py")
+        );
+        // A relative XDG_DATA_HOME is ignored, as the spec says.
+        let relative = |k: &str| (k == "XDG_DATA_HOME").then(|| "data".to_string());
+        assert_eq!(
+            Layout::for_user(home.clone(), Os::Linux, relative).script(),
+            home.join(".local/share/salvage/lldb/salvage_unreal.py")
         );
     }
 }
