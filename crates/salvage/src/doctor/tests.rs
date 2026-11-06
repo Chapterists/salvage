@@ -303,7 +303,13 @@ fn heavy_swap_warns_and_small_ram_is_tight() {
 fn lldbinit_states() {
     let setup = Setup::mac();
     let lldbinit = setup.home().join(".lldbinit");
-    assert_eq!(status(&setup.run(), "lldbinit"), Status::Pass);
+    let check = setup.run().check("lldbinit").unwrap().clone();
+    assert_eq!(check.status, Status::Pass);
+    assert!(check.summary.starts_with("Loads the engine's formatters"));
+    assert!(
+        check.details[0].contains("salvage lldb install"),
+        "recommends ours"
+    );
 
     std::fs::write(
         &lldbinit,
@@ -319,6 +325,7 @@ fn lldbinit_states() {
             .summary
             .contains("no longer exists")
     );
+    assert_eq!(fix_command(&report, "lldbinit"), "salvage lldb install");
 
     std::fs::write(
         &lldbinit,
@@ -330,14 +337,22 @@ fn lldbinit_states() {
     std::fs::remove_file(&lldbinit).unwrap();
     let report = setup.run();
     assert_eq!(status(&report, "lldbinit"), Status::Warn);
-    let command = fix_command(&report, "lldbinit");
+    assert_eq!(fix_command(&report, "lldbinit"), "salvage lldb install");
+
+    // After `salvage lldb install`, doctor is happy.
+    let layout = crate::lldb::Layout {
+        home: setup.home(),
+        data_dir: setup.home().join("Library/Application Support/Salvage"),
+    };
+    crate::lldb::install(&layout, 1).unwrap();
+    let check = setup.run().check("lldbinit").unwrap().clone();
+    assert_eq!(check.status, Status::Pass);
     assert!(
-        command.starts_with("echo 'command script import \""),
-        "{command}"
-    );
-    assert!(
-        command.ends_with("UEDataFormatters_2ByteChars.py\"' >> ~/.lldbinit"),
-        "{command}"
+        check
+            .summary
+            .starts_with("Loads Salvage's Unreal formatters from ~/Library"),
+        "{}",
+        check.summary
     );
 }
 
