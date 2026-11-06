@@ -3,6 +3,8 @@ name: Public safety
 on:
   push:
   pull_request:
+    # "edited" re-checks the title and body whenever they change after opening.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -15,7 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for internal files and links
+      - name: Self-test the public-safety guard
+        run: scripts/test-public-safety.sh
+
+      - name: Check for internal files, links and engine source
         run: scripts/check-public-safety.sh --all
 
       - name: Check commit messages
