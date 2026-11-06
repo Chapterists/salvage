@@ -6,8 +6,9 @@
 //! running install twice changes nothing.
 
 use std::fs;
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
+
+use crate::fsutil::{back_up, resolve, write_atomically};
 
 /// The formatter script, embedded so the binary can install it anywhere.
 pub const FORMATTERS: &str = include_str!("../lldb/salvage_unreal.py");
@@ -268,60 +269,6 @@ fn join_lines(lines: &[String], original: &str) -> String {
     let mut text = lines.join(newline);
     text.push_str(newline);
     text
-}
-
-/// Follows a symlinked init file (dotfile managers do this) so we edit the real file.
-fn resolve(file: &Path) -> PathBuf {
-    fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf())
-}
-
-/// Copies the current file next to the one users know about: `~/.lldbinit.salvage-backup-<stamp>`.
-fn back_up(file: &Path, target: &Path, stamp: u64) -> Result<PathBuf, String> {
-    let name = file
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let mut backup = file.with_file_name(format!("{name}.salvage-backup-{stamp}"));
-    let mut n = 1;
-    while backup.exists() {
-        backup = file.with_file_name(format!("{name}.salvage-backup-{stamp}-{n}"));
-        n += 1;
-    }
-    fs::copy(target, &backup).map_err(|e| {
-        format!(
-            "can't back up {} to {}: {e}",
-            file.display(),
-            backup.display()
-        )
-    })?;
-    Ok(backup)
-}
-
-/// Writes through a temporary file and a rename, keeping the original's permissions.
-fn write_atomically(
-    path: &Path,
-    text: &str,
-    keep_permissions_of: Option<&Path>,
-) -> std::io::Result<()> {
-    let permissions = keep_permissions_of
-        .and_then(|p| fs::metadata(p).ok())
-        .map(|m| m.permissions());
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let temp = path.with_file_name(format!(".{name}.salvage-tmp-{}", std::process::id()));
-    {
-        let mut file = fs::File::create(&temp)?;
-        file.write_all(text.as_bytes())?;
-        file.sync_all()?;
-    }
-    if let Some(permissions) = permissions {
-        fs::set_permissions(&temp, permissions)?;
-    }
-    fs::rename(&temp, path).inspect_err(|_| {
-        let _ = fs::remove_file(&temp);
-    })
 }
 
 #[cfg(test)]

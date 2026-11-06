@@ -4,8 +4,10 @@
 //! lower-powered machines, and developing on macOS. The `salvage` binary is a
 //! thin layer over this crate.
 
+pub mod clangd;
 pub mod doctor;
 pub mod engine;
+pub mod fsutil;
 pub mod ini;
 pub mod jsonc;
 pub mod lldb;
