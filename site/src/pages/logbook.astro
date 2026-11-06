@@ -7,7 +7,7 @@ const entries = await Promise.all(
   (await logbookEntries()).map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
 );
 ---
-<Page title="Logbook" label="Changelog" dek="What changed in Salvage, newest first.">
+<Page title="Logbook" dek="What changed in Salvage, newest first.">
   <ol class="log">
     {entries.map(({ entry, Content }) => (
       <li>

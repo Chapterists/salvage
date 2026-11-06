@@ -1,39 +1,143 @@
 ---
-// The hero illustration: the bow of a ship, side on, with draft marks painted
-// up the stem in gigabytes. The sea and the hull run off past the edges of the
-// drawing (overflow is visible) so the waterline crosses the whole hero.
+// The hero illustration: the bow of a ship, side on, facing left, with draft
+// marks painted up the stem in gigabytes. The water sits at the 12 mark. A
+// dashed line lower down shows where it would sit if the ship carried less.
+// Both lines are illustrative, not measurements.
 //
-// viewBox is 520 wide and runs from y = 150 to 640, with the waterline at
-// y = 400. The part below the waterline is 240/520 = 0.4615 of the rendered
-// width; index.astro relies on that.
+// A lifebuoy floats off the bow on a line from the rail.
+//
+// The sea and the hull run off past the edges of the drawing (overflow is
+// visible) so the waterline crosses the whole hero. viewBox is 520 wide and
+// runs from y = 150 to 640, with the waterline at y = 400. The part below the
+// waterline is 240/520 = 0.4615 of the rendered width; index.astro relies on
+// that.
 
-// The stem runs from the deck at (90, 180) down to the bulb at (222, 538).
-const stemX = (y: number) => 90 + ((y - 180) * 132) / 358;
-// Marks every 2 GB, 20 units per GB. The waterline (y = 400) falls at 7.
-const marks = [16, 14, 12, 10, 8, 6, 4, 2].map((gb) => ({ gb, y: 400 - (gb - 7) * 20 + 10 }));
+const WATER = 400;
+const PER_GB = 20; // drawing units per gigabyte of draft
+const TODAY_GB = 12;
+const AFTER_GB = 8;
+const draftY = (gb: number) => WATER - (gb - TODAY_GB) * PER_GB;
+
+// The stem: two cubic curves from the top of the bulwark down to the keel.
+// A little flare up top, a straight rake through the waterline, then the
+// forefoot rounds into a flat keel.
+type P = [number, number];
+const stem: [P, P, P, P][] = [
+  [[52, 176], [78, 262], [116, 352], [156, 440]],
+  [[156, 440], [196, 528], [250, 610], [352, 624]],
+];
+const cubic = ([a, b, c, d]: [P, P, P, P], t: number): P => {
+  const u = 1 - t;
+  const f = (i: 0 | 1) => u * u * u * a[i] + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t * t * t * d[i];
+  return [f(0), f(1)];
+};
+// Sample the stem so we can find its x at any height.
+const samples = stem.flatMap((seg) => Array.from({ length: 80 }, (_, i) => cubic(seg, i / 79)));
+const stemX = (y: number) => {
+  for (let i = 1; i < samples.length; i++) {
+    const [x0, y0] = samples[i - 1];
+    const [x1, y1] = samples[i];
+    if (y >= y0 && y <= y1) return x0 + ((y - y0) / (y1 - y0 || 1)) * (x1 - x0);
+  }
+  return samples[samples.length - 1][0];
+};
+const pt = (p: P) => `${p[0]} ${p[1]}`;
 const hull =
-  "M90 180 L1400 180 L1400 640 L330 640 C 284 640 254 634 232 622 C 192 624 160 604 160 576 C 160 548 190 532 222 538 Q 150 360 90 180 Z";
+  `M${pt(stem[0][0])} ` +
+  stem.map((s) => `C ${pt(s[1])}, ${pt(s[2])}, ${pt(s[3])}`).join(" ") +
+  " C 380 628, 400 628, 420 628 L1600 628 L1600 192 Z";
+
+// Draft marks every 2 GB. On a real ship the bottom of each numeral marks the
+// draft, so the numbers sit on their lines.
+const marks = [20, 18, 16, 14, 12, 10, 8, 6, 4, 2].map((gb) => ({ gb, y: draftY(gb), x: stemX(draftY(gb)) + 26 }));
+const labelX = stemX(WATER) + 110;
+const afterY = draftY(AFTER_GB);
+
+// Guard rail stanchions along the deck.
+const stanchions = Array.from({ length: 22 }, (_, i) => 92 + i * 30);
+
+// The lifebuoy: the same ring as the mark, four Foam bands on Rescue Orange.
+const BUOY = { x: -70, y: 393, r: 20.5, inner: 10.5 };
+const polar = (r: number, deg: number) => {
+  const a = (deg * Math.PI) / 180;
+  return `${(BUOY.x + r * Math.cos(a)).toFixed(2)} ${(BUOY.y + r * Math.sin(a)).toFixed(2)}`;
+};
+const bands = [45, 135, 225, 315].map((c) => {
+  const [a, b] = [c - 17, c + 17];
+  return `M${polar(BUOY.r, a)} A${BUOY.r} ${BUOY.r} 0 0 1 ${polar(BUOY.r, b)} L${polar(BUOY.inner, b)} A${BUOY.inner} ${BUOY.inner} 0 0 0 ${polar(BUOY.inner, a)} Z`;
+});
+
+// The waterline meets the stem here: the bow wave starts at this point.
+const sx = stemX(WATER);
 ---
 <svg class="bow" viewBox="0 150 520 490" aria-hidden="true">
   <defs>
-    <clipPath id="bow-above"><rect x="-4000" y="-200" width="6000" height="598" /></clipPath>
-    <clipPath id="bow-below"><rect x="-4000" y="402" width="6000" height="600" /></clipPath>
+    <clipPath id="bow-above"><rect x="-4000" y="-200" width="6000" height={WATER - 2 + 200} /></clipPath>
+    <clipPath id="bow-below"><rect x="-4000" y={WATER + 2} width="6000" height="600" /></clipPath>
   </defs>
-  <rect class="sea" x="-4000" y="400" width="6000" height="1000" />
-  <g class="ship">
-    <path class="topsides" d={hull} clip-path="url(#bow-above)" />
-    <path class="bottom" d={hull} clip-path="url(#bow-below)" />
-    <rect class="rail" x="92" y="180" width="1400" height="9" />
-    <circle class="hawse" cx="330" cy="236" r="15" />
-    <circle class="hawse-in" cx="330" cy="236" r="7" />
-    <g class="marks">
-      <text class="unit" x={stemX(220) + 84} y="218">GB</text>
-      {marks.map((m) => (
-        <text x={stemX(m.y) + 36} y={m.y}>{m.gb}</text>
-      ))}
+
+  <!-- The lifebuoy and its line sit behind the sea, so the water covers the
+       bottom of the ring. -->
+  <g class="buoy-line">
+    <path d={`M56 178 C 20 236, -36 300, -70 ${BUOY.y - BUOY.r + 1}`} />
+  </g>
+  <g class="buoy">
+    <circle cx={BUOY.x} cy={BUOY.y} r={(BUOY.r + BUOY.inner) / 2} fill="none" stroke="var(--rescue-orange)" stroke-width={BUOY.r - BUOY.inner} />
+    <g fill="var(--foam)">
+      {bands.map((d) => <path d={d} />)}
     </g>
   </g>
-  <line class="surface" x1="-4000" y1="400" x2="2000" y2="400" />
+
+  <rect class="sea" x="-4000" y={WATER} width="6000" height="1000" />
+
+  <g class="ship">
+    <g class="rail-guard">
+      <rect x="62" y="158" width="1600" height="3" />
+      {stanchions.map((x) => <rect x={x} y="158" width="3" height="20" />)}
+    </g>
+    <path class="topsides" d={hull} clip-path="url(#bow-above)" />
+    <path class="bottom" d={hull} clip-path="url(#bow-below)" />
+    <path class="bulwark" d={`M52 176 L1600 176 L1600 188 L${stemX(188)} 188 Z`} />
+
+    <!-- Hawse pipe, with the anchor stowed: shank up the pipe, crown and
+         flukes snug against the hull. -->
+    <g transform="translate(318 218)">
+      <ellipse class="hawse-plate" cx="0" cy="0" rx="23" ry="18" />
+      <ellipse class="hawse" cx="0" cy="-1" rx="13" ry="10" />
+      <g class="anchor">
+        <rect x="-3.5" y="-2" width="7" height="44" rx="2" />
+        <path d="M-27 22 L-21 36 Q 0 54 21 36 L27 22 L18 30 Q 0 42 -18 30 Z" />
+        <rect x="-11" y="10" width="22" height="5" rx="2" />
+      </g>
+    </g>
+
+    <g class="marks">
+      <text class="unit" x={marks[0].x + 44} y={marks[0].y}>GB</text>
+      {marks.map((m) => (
+        <text x={m.x} y={m.y}>{m.gb}</text>
+      ))}
+    </g>
+
+    <line class="after" x1={stemX(afterY)} y1={afterY + 1} x2="1600" y2={afterY + 1} />
+    <text class="note after-note" x={labelX} y={afterY - 6}>after Salvage</text>
+    <text class="note today-note" x={labelX} y={WATER - 6}>today</text>
+  </g>
+
+  <!-- Bow wave -->
+  <g class="spray">
+    <path d={`M${sx + 1} ${WATER} Q ${sx - 4} ${WATER - 12} ${sx - 34} ${WATER - 9} Q ${sx - 14} ${WATER - 5} ${sx - 12} ${WATER} Z`} />
+    <circle cx={sx - 38} cy={WATER - 20} r="2.6" />
+    <circle cx={sx - 22} cy={WATER - 26} r="2" />
+    <circle cx={sx - 48} cy={WATER - 9} r="2" />
+  </g>
+
+  <line class="surface" x1="-4000" y1={WATER} x2="2000" y2={WATER} />
+  <g class="ripples">
+    <rect x="-106" y={WATER + 8} width="16" height="2.5" rx="1.25" />
+    <rect x="-52" y={WATER + 8} width="12" height="2.5" rx="1.25" />
+    <rect x="-80" y={WATER + 18} width="20" height="2.5" rx="1.25" />
+    <rect x={sx - 70} y={WATER + 12} width="24" height="2.5" rx="1.25" />
+  </g>
 </svg>
 <style>
   .bow {
@@ -50,44 +154,100 @@ const hull =
   .bottom {
     fill: var(--antifouling);
   }
-  .rail {
+  .bulwark {
     fill: var(--rescue-orange);
   }
-  .hawse {
-    fill: var(--night-sea);
+  .rail-guard rect {
+    fill: var(--steel);
   }
-  .hawse-in {
+  .hawse-plate {
+    fill: var(--hull-navy);
+  }
+  .hawse {
     fill: var(--deep-sea);
+  }
+  .anchor {
+    fill: var(--steel);
   }
   .marks text {
     fill: var(--foam);
     font-family: var(--font-sans);
     font-stretch: 100%;
     font-weight: 800;
-    font-size: 26px;
+    font-size: 24px;
   }
   .marks .unit {
     font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 15px;
-    letter-spacing: 0.1em;
+    font-size: 14px;
     fill: var(--crane-yellow);
+  }
+  .note {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 15px;
+  }
+  .today-note {
+    fill: var(--sea-glass);
+  }
+  .after-note {
+    fill: var(--foam);
+  }
+  .after {
+    stroke: var(--foam);
+    stroke-width: 2;
+    stroke-dasharray: 7 6;
+    opacity: 0.75;
   }
   .surface {
     stroke: var(--sea-glass);
     stroke-width: 2;
     opacity: 0.7;
   }
-  .ship {
-    animation: ride 7s ease-in-out infinite;
+  .spray,
+  .ripples {
+    fill: var(--foam);
   }
-  @keyframes ride {
+  .ripples {
+    opacity: 0.35;
+  }
+  .buoy-line path {
+    fill: none;
+    stroke: var(--crane-yellow);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+
+  /* The ship holds still so the water stays on its mark. The buoy bobs, and
+     its line stretches to follow it; the line's top is pinned at the rail. */
+  .buoy {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bob 4.2s ease-in-out infinite;
+  }
+  .buoy-line {
+    transform-box: fill-box;
+    transform-origin: top;
+    animation: pay-out 4.2s ease-in-out infinite;
+  }
+  @keyframes bob {
     0%,
     100% {
-      transform: translateY(0);
+      transform: translateY(0) rotate(-5deg);
     }
     50% {
-      transform: translateY(-7px);
+      transform: translateY(-6px) rotate(5deg);
+    }
+  }
+  /* The line drops 194 units from the rail to the ring: 6 units of rise is a
+     scale of 188 / 194. */
+  @keyframes pay-out {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(0.969);
     }
   }
 </style>

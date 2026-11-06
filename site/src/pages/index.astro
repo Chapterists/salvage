@@ -12,13 +12,13 @@ const recent = (await logbookEntries()).slice(0, 3);
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="headline">
-        <p class="stencil status"><span class="dot" aria-hidden="true"></span>Early days. Nothing shipped yet.</p>
         <h1 class="hull">Your machine has more in it than you think.</h1>
       </div>
       <div class="above">
         <p class="sub">
           RAM is expensive right now, and high-end games keep asking for more of it. Salvage is open-source tools
-          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine.
+          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine. It's early, and
+          nothing has shipped yet.
         </p>
       </div>
       <div class="bow-cell">
@@ -26,7 +26,7 @@ const recent = (await logbookEntries()).slice(0, 3);
       </div>
       <div class="below">
         <p class="tagline hull">We don't sell you a new ship. We get yours sailing.</p>
-        <p class="caption">Draft marks, in gigabytes. A ship that carries less rides higher.</p>
+        <p class="caption">Draft marks in gigabytes. A ship that carries less rides higher. (An illustration, not a measurement.)</p>
       </div>
     </div>
   </section>
@@ -34,7 +34,6 @@ const recent = (await logbookEntries()).slice(0, 3);
   <Waterline above="var(--deep-sea)" below="var(--ground)" shape="angle-reverse" stripe="var(--antifouling)" />
 
   <section class="why wrap">
-    <p class="stencil section-label">Why</p>
     <h2 class="hull">Upgrading is the usual answer. Right now it's an expensive one.</h2>
     <div class="why-copy">
       <p>
@@ -48,8 +47,20 @@ const recent = (await logbookEntries()).slice(0, 3);
     </div>
   </section>
 
+  <Waterline above="var(--ground)" below="var(--rescue-orange)" shape="angle" />
+  <section class="punchout">
+    <div class="wrap">
+      <h2 class="hull">Somebody called your machine a wreck. <span>We'd like a look at it.</span></h2>
+      <p>
+        Laptops with 8 GB of memory. Desktops a few graphics cards behind. The Mac you were told isn't for game
+        development. Those are the machines we're working for.
+      </p>
+    </div>
+  </section>
+  <Waterline above="var(--rescue-orange)" below="var(--ground)" shape="angle-reverse" />
+
   <section class="streams wrap" aria-labelledby="streams-title">
-    <p class="stencil section-label" id="streams-title">Two workstreams</p>
+    <h2 class="hull streams-title" id="streams-title">What we're working on</h2>
 
     <article class="stream">
       <IconLighter class="stream-icon" />
@@ -60,7 +71,7 @@ const recent = (await logbookEntries()).slice(0, 3);
           A lighter is a barge that takes cargo off a ship so it can float into shallow water. Same job here: take
           load off the engine so big games fit on small machines.
         </p>
-        <p class="stencil stream-status">Status: surveying where the memory goes</p>
+        <p class="now">Right now we're measuring where the memory goes.</p>
       </div>
     </article>
 
@@ -73,7 +84,7 @@ const recent = (await logbookEntries()).slice(0, 3);
           Plenty of people build games on a Mac. The editor, the builds and the tools around them should feel like
           they belong there, not like they're putting up with it.
         </p>
-        <p class="stencil stream-status">Status: surveying where the time goes</p>
+        <p class="now">Right now we're measuring where the time goes.</p>
       </div>
     </article>
   </section>
@@ -82,7 +93,7 @@ const recent = (await logbookEntries()).slice(0, 3);
 
   <section class="built">
     <div class="wrap">
-      <p class="stencil section-label">How it's built</p>
+      <h2 class="hull built-title">How it's built</h2>
       <dl>
         <div>
           <dt class="hull">Tools ship here.</dt>
@@ -110,7 +121,6 @@ const recent = (await logbookEntries()).slice(0, 3);
 
   <section class="deck wrap">
     <div>
-      <p class="stencil section-label">Where things stand</p>
       <h2 class="hull">Early. Nothing has shipped.</h2>
       <p>
         We're measuring where Unreal spends memory and where Mac development slows down, and deciding what to build
@@ -119,7 +129,7 @@ const recent = (await logbookEntries()).slice(0, 3);
       </p>
     </div>
     <div class="log">
-      <h3 class="stencil">From the logbook</h3>
+      <h3>From the logbook</h3>
       <ol>
         {recent.map((e) => (
           <li>
@@ -176,19 +186,6 @@ const recent = (await logbookEntries()).slice(0, 3);
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-  .status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--crane-yellow);
-    margin: 0 0 var(--s-5);
-  }
-  .dot {
-    width: 0.6rem;
-    height: 0.6rem;
-    border-radius: 50%;
-    background: var(--crane-yellow);
   }
   h1 {
     font-size: clamp(2.5rem, 1rem + 4.6vw, 5.5rem);
@@ -250,10 +247,6 @@ const recent = (await logbookEntries()).slice(0, 3);
   }
 
   /* ---- Shared section bits ---- */
-  .section-label {
-    color: var(--accent);
-    margin: 0 0 var(--s-4);
-  }
   h2 {
     font-size: var(--step-4);
     margin: 0;
@@ -269,9 +262,6 @@ const recent = (await logbookEntries()).slice(0, 3);
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     column-gap: var(--s-8);
   }
-  .why .section-label {
-    grid-column: 1 / -1;
-  }
   .why-copy {
     font-size: var(--step-1);
     line-height: 1.55;
@@ -284,9 +274,36 @@ const recent = (await logbookEntries()).slice(0, 3);
     margin-top: var(--s-4);
   }
 
+  /* ---- The punchout: Rescue Orange, used big once ---- */
+  .punchout {
+    background: var(--rescue-orange);
+    color: var(--night-sea); /* 5.75:1 */
+    padding-block: var(--s-6) var(--s-7);
+  }
+  .punchout h2 {
+    font-size: var(--step-5);
+    max-width: 21ch;
+    line-height: 0.98;
+  }
+  .punchout h2 span {
+    display: block;
+  }
+  .punchout p {
+    font-size: var(--step-1);
+    font-weight: 600;
+    line-height: 1.5;
+    max-width: 36rem;
+    margin: var(--s-6) 0 0;
+  }
+
   /* ---- Workstreams ---- */
   .streams {
-    padding-block: var(--s-6) var(--s-5);
+    padding-block: var(--s-7) var(--s-5);
+  }
+  .streams-title,
+  .built-title {
+    font-size: var(--step-3);
+    margin: 0 0 var(--s-5);
   }
   .stream {
     display: grid;
@@ -300,6 +317,10 @@ const recent = (await logbookEntries()).slice(0, 3);
     width: 8rem;
     height: 8rem;
     filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.28));
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .stream:hover :global(.stream-icon) {
+    transform: translateY(-4px) rotate(-4deg);
   }
   .stream h3 {
     font-size: var(--step-3);
@@ -314,9 +335,10 @@ const recent = (await logbookEntries()).slice(0, 3);
     line-height: 1.45;
     font-weight: 600;
   }
-  .stream-status {
+  .now {
     color: var(--mark);
-    margin-top: var(--s-5) !important;
+    font-weight: 600;
+    margin-top: var(--s-4) !important;
   }
 
   /* ---- How it's built ---- */
@@ -356,14 +378,16 @@ const recent = (await logbookEntries()).slice(0, 3);
   .deck h2 {
     font-size: var(--step-3);
   }
-  .deck p:not(.stencil) {
+  .deck p {
     margin: var(--s-4) 0 0;
     max-width: var(--measure);
     font-size: var(--step-1);
     line-height: 1.55;
   }
   .log h3 {
-    color: var(--muted);
+    font-stretch: var(--stretch-sign);
+    font-size: var(--step-0);
+    font-weight: 750;
     margin: 0.4rem 0 var(--s-4);
   }
   .log ol {

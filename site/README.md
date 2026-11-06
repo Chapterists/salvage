@@ -25,6 +25,8 @@ CI builds the site on every pull request that touches it (`.github/workflows/sit
 | `src/components/` | The mark, wordmark, waterline dividers, the hero bow and the workstream icons. All hand-drawn SVG. |
 | `src/styles/tokens.css` | Colors, type, spacing, and the night and day themes. |
 | `public/fonts/` | Self-hosted fonts, each with its license. |
+| `public/` (icons) | `favicon.svg`, `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` and `site.webmanifest`, all drawn from the lifebuoy. The PNGs are rendered from `favicon.svg` and `assets/brand/salvage-app-icon.svg`. |
+| `public/social-preview.png` | The 1280 x 640 image link previews use, a copy of `assets/brand/social-preview.png`. Its source is `assets/brand/social-preview.html`. |
 
 ## Add a logbook entry
 
@@ -45,4 +47,7 @@ One or two plain sentences: what changed and why it matters.
 - **Night is the default.** Day mode changes the reading ground. The header, hero, title bands and footer keep their ship colors in both modes.
 - **Type:** Archivo (SIL Open Font License) set at its widest for hull-lettering headlines and at normal width for reading, and Martian Mono (SIL Open Font License) for labels, code and numbers. Numbers use tabular figures.
 - **The waterline** is the section break: a flat, crisp line between two colors, angled or gently rolling.
+- **Rescue Orange, big, once per page.** The home page uses it for one full-width band. Everywhere else it stays small: the lifebuoy, the bulwark, a list marker.
+- **Labels:** headings carry the structure. No small spaced-capital labels above them. The one mono label style is for dates.
+- **Motion** is small and optional: the lifebuoy bobs, and the workstream icons move on hover. All of it stops under `prefers-reduced-motion`.
 - **Copy:** plain and specific, numbers over adjectives, American spelling, no em dashes. Never describe something as available before it ships.

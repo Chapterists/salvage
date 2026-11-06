@@ -2,7 +2,7 @@
 // Switches between Night (default) and Day. The choice is remembered per
 // browser; the inline script in Base.astro applies it before first paint.
 ---
-<button class="theme-toggle stencil" type="button" aria-label="Switch to day mode" data-theme-toggle>
+<button class="theme-toggle" type="button" aria-label="Switch to day mode" data-theme-toggle>
   <span class="when-night">Day</span><span class="when-day">Night</span>
 </button>
 <script>
@@ -28,9 +28,13 @@
     color: var(--foam);
     border: 1.5px solid rgb(244 241 234 / 0.35);
     border-radius: 999px;
-    padding: 0.4rem 0.8rem;
+    padding: 0.4rem 0.85rem;
     cursor: pointer;
     line-height: 1;
+    font-family: var(--font-sans);
+    font-stretch: var(--stretch-sign);
+    font-weight: 600;
+    font-size: 0.8125rem;
   }
   .theme-toggle:hover {
     border-color: var(--crane-yellow);
