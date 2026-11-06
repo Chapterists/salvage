@@ -1,6 +1,6 @@
 [package]
 name = "salvage"
-description = "Chapterists' open-source toolbox: the tools we use to make our stories, starting with Unreal Engine on lighter machines and on macOS."
+description = "The salvage command, one of the tools in Salvage, Chapterists' open-source toolbox: checks, measurements and setup for Unreal Engine work."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

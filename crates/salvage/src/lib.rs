@@ -1,8 +1,8 @@
-//! Salvage: Chapterists' open-source toolbox, the tools we use to make our stories.
+//! The `salvage` command: one of the tools in Salvage, Chapterists' open-source
+//! toolbox of the tools we use to make our stories.
 //!
-//! The first tools are for Unreal Engine: running games and the editor on
-//! lower-powered machines, and developing on macOS. The `salvage` binary is a
-//! thin layer over this crate.
+//! Its subcommands check, measure and set up Unreal Engine work: `doctor`,
+//! `soundings`, `lldb` and `clangd`. The binary is a thin layer over this crate.
 
 pub mod clangd;
 pub mod doctor;

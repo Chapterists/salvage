@@ -21,8 +21,9 @@ const VERSION: &str = if env!("SALVAGE_COMMIT").is_empty() {
     concat!(env!("CARGO_PKG_VERSION"), " (", env!("SALVAGE_COMMIT"), ")")
 };
 
-/// Salvage: Chapterists' open-source toolbox, the tools we use to make our
-/// stories. First up: Unreal Engine on lighter machines and on macOS.
+/// The salvage command, from Salvage: Chapterists' open-source toolbox, the
+/// tools we use to make our stories. Checks, measurements and setup for
+/// Unreal Engine work.
 #[derive(Parser)]
 #[command(name = "salvage", version = VERSION, propagate_version = true)]
 struct Cli {

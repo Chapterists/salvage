@@ -35,7 +35,7 @@ blocked_paths=(
   '(^|/)\.claude/memory/'
   '(^|/)\.orca/'
   # A vendored or copied Unreal Engine tree (source, shaders, config, content...).
-  # Salvage's own plugins live under Plugins/<Name>/, never under Engine/.
+  # Salvage's own Unreal plugins live under unreal/Plugins/<Name>/, never under Engine/.
   '(^|/)Engine/(Source|Shaders|Config|Content|Plugins|Build|Binaries|Extras|Programs|Platforms|Restricted)/'
 )
 # Explicitly allowed despite matching the above.
