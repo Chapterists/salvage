@@ -1,0 +1,42 @@
+Config: Development
+Device Profile: MacEditor
+
+MemReport: Begin command "Mem FromReport"
+Platform Memory Stats for Mac
+Process Physical Memory: 5120.00 MB used, 5400.50 MB peak
+MemReport: End command "Mem FromReport"
+
+MemReport: Begin command "obj list -resourcesizesort"
+
+                                                                                                Class    Count      NumKB      MaxKB   ResExcKB  ResExcDedSysKB  ResExcDedVidKB     ResExcUnkKB
+                                                                                            Texture2D       90     100.00     110.00   20380.00            0.00        20380.00            0.00
+                                                                                           StaticMesh       40     150.00     160.00    3946.00          300.00            0.00         3646.00
+42000 Objects (Total: 70.000M / Max: 80.000M / Res: 80.000M | ResDedSys: 25.000M / ResDedVid: 40.000M / ResUnknown: 15.000M)
+MemReport: End command "obj list -resourcesizesort"
+
+MemReport: Begin command "rhi.DumpResourceMemory"
+Tracked RHIResources (0 total with info, 4100 total tracked)
+Total tracked resource size: 0.000000000 MB
+MemReport: End command "rhi.DumpResourceMemory"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=Lumen"
+MemReport: End command "rhi.dumpresourcememory summary name=Lumen"
+
+MemReport: Begin command "obj list class=StaticMesh -resourcesizesort"
+
+                                                                                                Class    Count      NumKB      MaxKB   ResExcKB  ResExcDedSysKB  ResExcDedVidKB     ResExcUnkKB
+                                                                                           StaticMesh       40     150.00     160.00    3946.00          300.00            0.00         3646.00
+40 Objects (Total: 0.150M / Max: 0.160M / Res: 3.900M | ResDedSys: 0.300M / ResDedVid: 0.000M / ResUnknown: 3.600M)
+MemReport: End command "obj list class=StaticMesh -resourcesizesort"
+
+MemReport: Begin command "listtextures nonvt"
+Total size: InMem= 12.00 MB  OnDisk= 20.00 MB  Count=40, CountApplicableToMin=30
+MemReport: End command "listtextures nonvt"
+
+MemReport: Begin command "ListTextures"
+Total size: InMem= 50.00 MB  OnDisk= 75.00 MB  Count=90, CountApplicableToMin=70
+MemReport: End command "ListTextures"
+
+MemReport: Begin command "r.DumpRenderTargetPoolMemory"
+1800.000MB total, 1700.000MB used, 100.000MB unused, 150 render targets
+MemReport: End command "r.DumpRenderTargetPoolMemory"

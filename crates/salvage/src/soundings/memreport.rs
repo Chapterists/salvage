@@ -67,11 +67,20 @@ pub fn parse(path: &Path, text: &str) -> Result<Sounding, String> {
                     .push(Pool::new(View::Gpu, display_name(name, line), bytes));
             }
         } else if let Some((name, bytes)) = headline_total(cmd, line) {
-            sounding.pools.push(Pool::new(View::Totals, name, bytes));
-        } else if cmd.starts_with("obj list") {
+            // Zero means the platform doesn't track it (Metal reports no RHI
+            // resource info), and the first value of a name is the full list's.
+            if bytes > 0
+                && !sounding
+                    .pools
+                    .iter()
+                    .any(|p| p.view == View::Totals && p.name == name)
+            {
+                sounding.pools.push(Pool::new(View::Totals, name, bytes));
+            }
+        } else if is_full_object_list(cmd) {
             if let Some(pool) = object_class(line) {
                 sounding.pools.push(pool);
-            } else if let Some(bytes) = objects_total(line) {
+            } else if let Some(bytes) = objects_total(line).filter(|b| *b > 0) {
                 sounding.pools.push(Pool::new(
                     View::Totals,
                     "Objects and their resources",
@@ -99,15 +108,24 @@ pub fn parse(path: &Path, text: &str) -> Result<Sounding, String> {
     Ok(sounding)
 }
 
-/// The one-line totals some commands print.
+/// `obj list -resourcesizesort` over every class. Memreports also list single
+/// classes (`obj list class=StaticMesh ...`), which would count objects twice.
+fn is_full_object_list(cmd: &str) -> bool {
+    cmd.starts_with("obj list") && cmd.contains("-resourcesizesort") && !cmd.contains("class=")
+}
+
+/// The one-line totals some commands print. Only the unfiltered commands
+/// count: `listtextures nonvt` and friends total a subset.
 fn headline_total(cmd: &str, line: &str) -> Option<(&'static str, u64)> {
-    if cmd.starts_with("rhi.dumpresourcememory") {
+    let command = cmd.split_whitespace().next().unwrap_or("");
+    let filtered = cmd.split_whitespace().count() > 1;
+    if command == "rhi.dumpresourcememory" && !filtered {
         let size = line.strip_prefix("Total tracked resource size:")?;
         Some(("RHI tracked resources", mb(size)?))
-    } else if cmd.starts_with("listtextures") {
+    } else if command == "listtextures" && !filtered {
         let size = line.strip_prefix("Total size: InMem=")?;
         Some(("Textures in memory", mb(size.split_whitespace().next()?)?))
-    } else if cmd.starts_with("r.dumprendertargetpoolmemory") {
+    } else if command == "r.dumprendertargetpoolmemory" {
         let (size, _) = line.split_once("MB total,")?;
         Some(("Render target pool", mb(size)?))
     } else {
