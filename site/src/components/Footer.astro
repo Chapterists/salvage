@@ -1,0 +1,83 @@
+---
+import Mark from "./Mark.astro";
+import Waterline from "./Waterline.astro";
+const repo = "https://github.com/Chapterists/salvage";
+---
+<Waterline above="var(--ground)" below="var(--deep-sea)" shape="roll" stripe="var(--antifouling)" />
+<footer class="site-footer">
+  <div class="wrap grid">
+    <div class="maker">
+      <Mark class="foot-mark" />
+      <p>Salvage is made by <a href="https://chapterists.com">Chapterists</a>.</p>
+    </div>
+    <ul class="links">
+      <li><a href={repo}>Source on GitHub</a></li>
+      <li><a href={`${repo}/blob/main/SECURITY.md`}>Report a security problem</a></li>
+      <li><a href={`${repo}/blob/main/LICENSE`}>MIT license</a></li>
+    </ul>
+    <p class="fine">
+      Copyright (c) 2026 Chapterists. Unreal and Unreal Engine are trademarks or registered trademarks of
+      Epic Games, Inc. in the United States and elsewhere. Salvage is not affiliated with or endorsed by Epic Games.
+    </p>
+  </div>
+</footer>
+<style>
+  .site-footer {
+    background: var(--deep-sea);
+    color: var(--steel);
+    padding-block: var(--s-6) var(--s-8);
+    font-size: var(--step--1);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s-5) var(--s-8);
+    align-items: start;
+  }
+  .maker {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    color: var(--foam);
+    font-size: var(--step-0);
+  }
+  .maker p {
+    margin: 0;
+  }
+  .maker :global(.foot-mark) {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: none;
+  }
+  .links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-6);
+    justify-self: end;
+    padding-top: 0.45rem;
+  }
+  a {
+    color: var(--sea-glass);
+  }
+  .maker a {
+    color: var(--foam);
+  }
+  .fine {
+    grid-column: 1 / -1;
+    margin: 0;
+    max-width: 52rem;
+    line-height: 1.55;
+  }
+  @media (max-width: 720px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .links {
+      justify-self: start;
+      flex-direction: column;
+    }
+  }
+</style>

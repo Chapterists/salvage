@@ -1,0 +1,48 @@
+---
+// A section break drawn as a waterline: a crisp line between two flat colors,
+// angled like a hull's boot-top or gently rolling like a swell. Optional stripe
+// paints a thin line along it.
+interface Props {
+  above: string;
+  below: string;
+  shape?: "angle" | "angle-reverse" | "roll";
+  stripe?: string;
+  height?: string;
+}
+const {
+  above,
+  below,
+  shape = "angle",
+  stripe,
+  height = "clamp(2.5rem, 1rem + 5vw, 6rem)",
+} = Astro.props;
+const lines = {
+  angle: { fill: "M0 78 L1000 18 L1000 100 L0 100 Z", line: "M0 78 L1000 18" },
+  "angle-reverse": { fill: "M0 18 L1000 78 L1000 100 L0 100 Z", line: "M0 18 L1000 78" },
+  roll: {
+    fill: "M0 60 C 160 30, 330 30, 500 55 S 840 80, 1000 45 L1000 100 L0 100 Z",
+    line: "M0 60 C 160 30, 330 30, 500 55 S 840 80, 1000 45",
+  },
+};
+const { fill, line } = lines[shape];
+---
+<div class="waterline" aria-hidden="true" style={`--above:${above};--below:${below};height:${height}`}>
+  <svg viewBox="0 0 1000 100" preserveAspectRatio="none">
+    <path d={fill} fill="var(--below)" />
+    {stripe && <path d={line} fill="none" stroke={stripe} stroke-width="3" vector-effect="non-scaling-stroke" />}
+  </svg>
+</div>
+<style>
+  .waterline {
+    position: relative;
+    background: var(--above);
+    margin-top: -1px;
+  }
+  .waterline svg {
+    position: absolute;
+    inset: 0 0 -1px;
+    width: 100%;
+    height: calc(100% + 1px);
+    max-width: none;
+  }
+</style>

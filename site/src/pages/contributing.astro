@@ -1,0 +1,15 @@
+---
+// Renders CONTRIBUTING.md from the repository root, so the site and GitHub
+// always say the same thing.
+import Page from "../layouts/Page.astro";
+import { Content } from "../../../CONTRIBUTING.md";
+---
+<Page
+  title="Contributing"
+  label="Join the crew"
+  dek="This repository is public. Here's how to help without leaking anything into it."
+>
+  <div class="prose">
+    <Content />
+  </div>
+</Page>
