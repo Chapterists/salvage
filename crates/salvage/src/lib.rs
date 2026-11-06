@@ -9,6 +9,7 @@ pub mod ini;
 pub mod jsonc;
 pub mod probe;
 pub mod project;
+pub mod soundings;
 pub mod ui;
 pub mod units;
 pub mod version;
