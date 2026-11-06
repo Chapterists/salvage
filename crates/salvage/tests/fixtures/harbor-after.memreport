@@ -1,0 +1,84 @@
+Changelist: 1234567
+Config: Development
+Device Name: SALVAGE-TEST
+Device Profile: Mac
+CommandLine Options:  /Game/Maps/Harbor -game -windowed
+Time Since Boot: 398.10 Seconds
+
+MemReport: Begin command "Mem FromReport"
+Platform Memory Stats for Mac
+Process Physical Memory: 7318.20 MB used, 7702.10 MB peak
+Process Virtual Memory: 412650.12 MB used, 413020.50 MB peak
+Physical Memory: 14210.33 MB used,  2173.67 MB free, 16384.00 MB total
+Virtual Memory: 9876.00 MB used,  6508.00 MB free, 16384.00 MB total
+MemReport: End command "Mem FromReport"
+
+MemReport: Begin command "obj list -resourcesizesort"
+
+                                                                                                Class    Count      NumKB      MaxKB   ResExcKB  ResExcDedSysKB  ResExcDedVidKB     ResExcUnkKB
+                                                                                            Texture2D     2210   1520.31   1530.00 2210400.00            0.00            0.00      2210400.00
+                                                                                           StaticMesh     1804   3010.12   3050.44  905200.50            0.00            0.00       905200.50
+                                                                                            SoundWave      612    310.20    312.00  402300.00            0.00            0.00       402300.00
+                                                                                         SkeletalMesh       48    210.55    212.00  188100.25            0.00            0.00       188100.25
+                                                                                        AnimSequence      930    820.40    822.10  151220.00            0.00            0.00       151220.00
+                                                                                             Material      402    640.00    645.00    6120.00            0.00            0.00         6120.00
+183402 Objects (Total: 201.442M / Max: 214.006M / Res: 3735.684M | ResDedSys: 0.000M / ResDedVid: 0.000M / ResUnknown: 3735.684M)
+MemReport: End command "obj list -resourcesizesort"
+
+MemReport: Begin command "rhi.DumpMemory"
+RHI resource memory (not tracked by our allocator)
+     Render target memory 2D     1210.42 MB
+     Render target memory 3D       64.00 MB
+     Texture memory 2D           1874.10 MB
+     Buffer memory                622.90 MB
+3771.420MB total
+MemReport: End command "rhi.DumpMemory"
+
+MemReport: Begin command "rhi.DumpResourceMemory"
+Tracked RHIResources (5120 total with info, 5340 total tracked)
+Showing 3 of 5120 matched resources
+Name: Lumen.SceneDepth - Type: Texture2D - Size: 256.000000000 MB - Flags: RT - Owner: Renderer
+Name: Nanite.StreamingPool - Type: Buffer - Size: 512.000000000 MB - Flags: None - Owner: Renderer
+Name: Shadow.Virtual.PhysicalPagePool - Type: Texture2D - Size: 384.000000000 MB - Flags: None - Owner: Renderer
+Shown 3 entries. Size: 1152.00/3640.50 MB (31.64% of total)
+Total tracked resource size: 2618.400000000 MB
+    Non-Transient: 3302.250000000 MB
+    Transient: 338.250000000 MB
+MemReport: End command "rhi.DumpResourceMemory"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=Lumen"
+Shown 61 entries with name Lumen. Size: 512.10/2618.40 MB (19.56% of total)
+MemReport: End command "rhi.dumpresourcememory summary name=Lumen"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=Nanite"
+Shown 24 entries with name Nanite. Size: 362.75/2618.40 MB (13.85% of total)
+MemReport: End command "rhi.dumpresourcememory summary name=Nanite"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=Shadow"
+Shown 18 entries with name Shadow. Size: 175.20/2618.40 MB (6.69% of total)
+MemReport: End command "rhi.dumpresourcememory summary name=Shadow"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=GPUScene"
+Shown 6 entries with name GPUScene. Size: 96.40/3640.50 MB (2.65% of total)
+MemReport: End command "rhi.dumpresourcememory summary name=GPUScene"
+
+MemReport: Begin command "rhi.dumpresourcememory summary name=VirtualTexture"
+Shown 12 entries with name VirtualTexture. Size: 210.00/3640.50 MB (5.77% of total)
+MemReport: End command "rhi.dumpresourcememory summary name=VirtualTexture"
+
+MemReport: Begin command "listtextures"
+Listing all textures.
+Total size: InMem= 1290.00 MB  OnDisk= 2650.80 MB  Count=2210, CountApplicableToMin=1730
+Total PF_DXT1 size: InMem= 402.10 MB  OnDisk= 560.00 MB 
+Total PF_BC5 size: InMem= 512.00 MB  OnDisk= 700.40 MB 
+Total World size: InMem= 1120.00 MB  OnDisk= 1500.00 MB 
+MemReport: End command "listtextures"
+
+MemReport: Begin command "r.DumpRenderTargetPoolMemory"
+Pooled Render Targets:
+  48.000MB 1920x1080 1mip(s) SceneColor (PF_FloatRGBA)
+1010.420MB total, 994.100MB used, 16.320MB unused, 188 render targets
+Deferred Render Targets:
+0.000MB Deferred total
+MemReport: End command "r.DumpRenderTargetPoolMemory"
+
