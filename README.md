@@ -25,11 +25,41 @@ Standalone tools live in this repository. Fixes that belong inside the engine go
 
 This repository never contains Unreal Engine source code or Epic content. That stays under Epic's license.
 
+## Tools
+
+Two tools are in the repository, both subcommands of one program, `salvage`. Neither changes anything on your machine: they read and report.
+
+**`salvage doctor`** runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific.
+
+```sh
+salvage doctor                      # finds your engine on its own
+salvage doctor --project ~/Projects/MyGame
+salvage doctor --json
+```
+
+**`salvage soundings`** reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed. It measures memory; it doesn't save any by itself. [docs/benchmark-recipe.md](docs/benchmark-recipe.md) covers how to take captures worth comparing.
+
+```sh
+salvage soundings run.memreport                     # where the memory goes
+salvage soundings before.memreport after.memreport  # what changed
+salvage soundings run.memreport --require 8         # exit 1 unless it fits 8 GB (for CI)
+```
+
+## Get it
+
+There's no release yet, so build from source. You need Git and a stable Rust toolchain ([rustup.rs](https://rustup.rs)).
+
+```sh
+git clone https://github.com/Chapterists/salvage.git
+cd salvage
+cargo install --locked --path crates/salvage   # puts salvage in ~/.cargo/bin
+```
+
+Or run it from the repository without installing: `cargo run -p salvage -- doctor`. To remove it: `cargo uninstall salvage`.
+
 ## Status
 
-Early. Nothing has shipped. We're measuring where Unreal spends memory and where Mac development slows down, and deciding what to build from what we find.
-
-When a tool ships, it will be listed here with before-and-after measurements on real machines. Until then, this page won't describe anything as available.
+Early. The two tools above are how we find what to fix and check the fixes; neither one cuts memory use by itself. When a change does, it will be listed here with before-and-after measurements on real machines.
 
 ## Contributing
 

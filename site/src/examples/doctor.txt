@@ -1,0 +1,54 @@
+
+  salvage doctor  macOS 27.2 · Apple M4 · 16 GB RAM
+  Unreal Engine 5.8.4 at /Users/Shared/Epic Games/UE_5.8
+  Giving this Mac the once-over.
+
+  Engine
+    ✓  Engine install      Unreal Engine 5.8.4, Launcher build
+                           /Users/Shared/Epic Games/UE_5.8 (newest in the Epic
+                           Games Launcher)
+    !  Mac shader formats  Projects inherit the engine default of SF_METAL_SM5
+                           and SF_METAL_SM6
+                           Each targeted format is compiled and cached
+                           separately when you cook, so two formats is roughly
+                           double the shader work and DDC.
+                           Run with --project to check a specific project.
+                           → Keep only the one you ship: untick the other under
+                             Project Settings > Platforms > Mac > Targeted RHIs,
+                             or add -TargetedRHIs=<format> under
+                             [/Script/MacTargetPlatform.MacTargetSettings] in
+                             your project's Config/DefaultEngine.ini.
+
+  Xcode and Metal
+    ✓  Xcode               Xcode 27.2 (27B52), within the engine's range (15.2.0
+                           to 27.9.0)
+                           Epic builds this engine with Xcode 26.1.1.
+    ✓  xcode-select        /Applications/Xcode.app/Contents/Developer
+    ✓  Metal Toolchain     Apple metal version 32023.922 (metalfe-32023.922.4)
+    ✓  Rosetta             Installed
+
+  Disk
+    ✓  Free space          108 GB free for the engine, home and caches
+    ✓  Spaces in paths     Only the engine path has spaces, and Epic's tools
+                           cope with that
+                           /Users/Shared/Epic Games/UE_5.8 is the Launcher
+                           default. If a third-party plugin's build script
+                           breaks at a space, this is why.
+    ✓  Zen / DDC           2.8 GB across 1 cache
+                           Engine DDC: 2.8 GB in /Users/Shared/Epic
+                           Games/UE_5.8/Engine/DerivedDataCache
+
+  Memory
+    ✓  RAM                 16 GB
+                           Below Epic's recommended 32 GB. Salvage is built for
+                           machines like this one.
+    ✓  Swap                7.3 GB in use
+
+  Debugging
+    !  ~/.lldbinit         Missing, so FString, TArray and friends show up as
+                           raw memory in the debugger
+                           → Load Unreal's formatters:
+                             echo 'command script import "/Users/Shared/Epic Games/UE_5.8/Engine/Extras/LLDBDataFormatters/UEDataFormatters_2ByteChars.py"' >> ~/.lldbinit
+
+  Nothing broken: 2 worth a look, 10 shipshape.
+

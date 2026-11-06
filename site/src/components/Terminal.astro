@@ -1,0 +1,142 @@
+---
+// Real terminal output from a Salvage command, colored the way the CLI colors
+// it: ✓ passes, ! worth a look, ✗ to fix, → what to do. The text comes from
+// files in src/examples/, captured with --color never.
+interface Props {
+  /** The command that produced the output, shown as the first line. */
+  command: string;
+  output: string;
+  /** Where the output came from. Shown under the block. */
+  caption?: string;
+  /** Color status marks and bars (off for JSON). */
+  marks?: boolean;
+}
+const { command, output, caption, marks = true } = Astro.props;
+
+// The CLI draws bars from block characters in eighths of a cell. Those glyphs
+// fall back to another font and break the columns, so draw each bar as a box
+// exactly as many character cells wide as the glyphs it replaces.
+const EIGHTHS = "▏▎▍▌▋▊▉";
+const bar = (run: string) => {
+  const chars = [...run];
+  const eighths = chars.reduce((n, c) => n + (c === "█" ? 8 : EIGHTHS.indexOf(c) + 1), 0);
+  return `<span class="bar" style="width:${chars.length}ch"><span style="width:${eighths / 8}ch"></span></span>`;
+};
+const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const paint = (line: string) => {
+  let html = escape(line);
+  if (!marks) return html;
+  html = html
+    .replace(/^(\s+)(✓)(?=\s)/, '$1<span class="g ok">$2</span>')
+    .replace(/^(\s+)(!)(?=\s)/, '$1<span class="g warn">$2</span>')
+    .replace(/^(\s+)(✗)(?=\s)/, '$1<span class="g bad">$2</span>')
+    .replace(/^(\s+)(–)(?=\s)/, '$1<span class="g dim">$2</span>')
+    .replace(/(✓|✗)(?= (trim|\d))/g, (m) => `<span class="g ${m === "✓" ? "ok" : "bad"}">${m}</span>`)
+    .replace(/(→)(?= )/g, '<span class="g accent">$1</span>')
+    .replace(/[█▏▎▍▌▋▊▉]+/g, bar)
+    .replace(/(−[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="ok">$1</span>')
+    .replace(/(\+[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="bad">$1</span>')
+    .replace(/^(\s+)(salvage (?:doctor|soundings))/, '$1<strong>$2</strong>');
+  return html;
+};
+const body = output.replace(/^\n+|\s+$/g, "").split("\n").map(paint).join("\n");
+---
+<figure class="terminal">
+  <pre><code><span class="prompt">$</span> <span class="cmd">{command}</span>
+{"\n"}<Fragment set:html={body} /></code></pre>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+<style>
+  .terminal {
+    margin: var(--s-6) 0;
+    max-width: 52rem;
+  }
+  pre {
+    margin: 0;
+    background: var(--night-sea);
+    color: var(--foam);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    padding: var(--s-5);
+    border-top: 4px solid var(--antifouling);
+    overflow-x: auto;
+    tab-size: 4;
+    /* The odd line runs past 80 columns (a long command, a long summary).
+       Wrap those where there's room; on phones, scroll instead so the
+       columns stay lined up. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  :root[data-theme="night"] pre,
+  :root:not([data-theme]) pre {
+    background: var(--deep-sea);
+  }
+  code {
+    font: inherit;
+  }
+  .prompt {
+    color: var(--steel);
+  }
+  .cmd {
+    color: var(--crane-yellow);
+  }
+  pre :global(strong) {
+    font-weight: 700;
+  }
+  pre :global(.ok) {
+    color: var(--sea-glass);
+  }
+  pre :global(.warn) {
+    color: var(--crane-yellow);
+    font-weight: 700;
+  }
+  pre :global(.bad) {
+    color: #ff7a4a;
+    font-weight: 700;
+  }
+  pre :global(.accent) {
+    color: var(--rescue-orange);
+  }
+  pre :global(.dim) {
+    color: var(--steel);
+  }
+  /* Marks that may come from a fallback font still take exactly one cell. */
+  pre :global(.g) {
+    display: inline-block;
+    width: 1ch;
+    text-align: center;
+  }
+  pre :global(.bar) {
+    display: inline-block;
+    vertical-align: -0.1em;
+    height: 0.85em;
+  }
+  pre :global(.bar > span) {
+    display: block;
+    height: 100%;
+    background: var(--sea-glass);
+  }
+  figcaption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--muted);
+    margin-top: var(--s-3);
+    max-width: var(--measure);
+  }
+  @media (max-width: 600px) {
+    .terminal {
+      margin-inline: calc(var(--gutter) * -1);
+    }
+    pre {
+      white-space: pre;
+      overflow-wrap: normal;
+      font-size: 0.6875rem;
+      padding: var(--s-4) var(--gutter);
+    }
+    figcaption {
+      padding-inline: var(--gutter);
+    }
+  }
+</style>

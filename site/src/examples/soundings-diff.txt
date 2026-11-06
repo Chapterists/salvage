@@ -1,0 +1,22 @@
+
+  salvage soundings  harbor-before.memreport → harbor-after.memreport
+  memreport · Mac · Development · captured on a 16 GB machine
+
+  Draft  10.1 GB → 7.5 GB at peak   −2.6 GB
+
+  Against smaller machines  25% kept free for the OS and other apps
+      8 GB  ✗ trim 4.1 GB       →  ✗ trim 1.5 GB
+     12 GB  ✗ trim 1.1 GB       →  ✓ 1.5 GB spare
+     16 GB  ✓ 1.9 GB spare      →  ✓ 4.5 GB spare
+
+  Biggest changes
+    total  RHI tracked resources    3.6 GB → 2.6 GB    −1022 MB
+    total  Textures in memory       1.8 GB → 1.3 GB    −584 MB
+    GPU    DistanceFields           288 MB → gone      −288 MB
+    GPU    Nanite                   619 MB → 363 MB    −256 MB
+    GPU    Shadow                   431 MB → 175 MB    −256 MB
+    GPU    Lumen                    742 MB → 512 MB    −230 MB
+    total  Render target pool       1.2 GB → 1010 MB   −200 MB
+
+  2.6 GB lighter than before. Now fits 12 GB, 16 GB.
+

@@ -1,0 +1,229 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import doctor from "../../examples/doctor.txt?raw";
+import doctorJson from "../../examples/doctor.json.txt?raw";
+
+// The twelve checks, in the order doctor runs them.
+const groups = [
+  {
+    title: "Engine",
+    checks: [
+      {
+        name: "Engine install",
+        what: "Finds an Unreal Engine install and reports its version and whether it's a Launcher build or a source build. If it can't find one, it warns, and the checks that need an engine are skipped.",
+      },
+      {
+        name: "Mac shader formats",
+        what: "Reads the Metal shader formats targeted for Mac, from the engine's config and, with --project, your project's. One format passes. Two or more is a warning: each one is compiled and cached separately when you cook, so two formats is roughly double the shader work and cache. None fails, because nothing can render.",
+        mac: true,
+      },
+    ],
+  },
+  {
+    title: "Xcode and Metal",
+    checks: [
+      {
+        name: "Xcode",
+        what: "Runs xcodebuild -version and compares the result with the range of Xcode versions the engine declares in its own config. Fails if Xcode is missing, if only the Command Line Tools are active, if its license hasn't been accepted, or if the version is outside the engine's range. Notes the version Epic builds that engine with.",
+        mac: true,
+      },
+      {
+        name: "xcode-select",
+        what: "Checks that the developer tools point at a full Xcode, not the Command Line Tools or a folder that no longer exists. Notes when DEVELOPER_DIR overrides it.",
+        mac: true,
+      },
+      {
+        name: "Metal Toolchain",
+        what: "Runs xcrun metal --version. Since Xcode 26 the Metal compiler is a separate download of about 1 GB, and without it the engine can't compile shaders. Fails if it's missing, and gives the download command.",
+        mac: true,
+      },
+      {
+        name: "Rosetta",
+        what: "On Apple silicon, warns if Rosetta isn't installed: some engine tools and third-party plugins still ship Intel-only binaries. Skipped on Intel Macs.",
+        mac: true,
+      },
+    ],
+  },
+  {
+    title: "Disk",
+    checks: [
+      {
+        name: "Free space",
+        what: "Free space on each volume that holds the engine, the project and your home folder. Fails under 10 GB and warns under 30 GB.",
+      },
+      {
+        name: "Spaces in paths",
+        what: "Warns when the project or your home folder has a space in its path, which trips up shell build steps and some plugins. A space in the engine path passes, since Epic's tools cope and the Launcher's default folder has one.",
+      },
+      {
+        name: "Zen / DDC",
+        what: "Adds up the local caches: Zen storage and the shared derived data cache in your user folder, the engine's and project's DerivedDataCache folders, and any UE-LocalDataCachePath or UE-ZenSubprocessDataPath override. Warns above 64 GB and names the biggest one.",
+      },
+    ],
+  },
+  {
+    title: "Memory",
+    checks: [
+      {
+        name: "RAM",
+        what: "Warns under 16 GB, which is tight for the editor. Passes from 16 GB, and notes when you're under the 32 GB Epic recommends.",
+      },
+      {
+        name: "Swap",
+        what: "Warns when the swap in use is more than half your RAM, which means the system is paging to disk.",
+      },
+    ],
+  },
+  {
+    title: "Debugging",
+    checks: [
+      {
+        name: "~/.lldbinit",
+        what: "Checks that ~/.lldbinit (or ~/.lldbinit-Xcode) loads Unreal's LLDB formatters, so FString, TArray and friends show up as values in the debugger instead of raw memory. Warns if the line is missing or points at a file that's gone, and prints the line to add.",
+        mac: true,
+      },
+    ],
+  },
+];
+---
+<Page
+  title="Check a Mac for Unreal"
+  compact
+  description="How to run salvage doctor, what its 12 checks look at, and how to read what it prints."
+  dek="salvage doctor runs 12 checks for the things that make Unreal Engine slow or broken on a Mac, and says how to fix each one. It reads your setup and changes nothing."
+>
+  <div class="prose wide">
+    <h2>Run it</h2>
+    <p>
+      From any folder, run <code>salvage doctor</code>. Run it from a project's folder, or
+      pass <code>--project</code>, and the shader check looks at that project's settings as well as the engine's.
+    </p>
+    <pre><code>salvage doctor
+salvage doctor --project ~/Projects/MyGame
+salvage doctor --engine "/Users/Shared/Epic Games/UE_5.8"
+salvage doctor --json</code></pre>
+    <p>
+      Doctor finds the engine on its own. It takes the first of these that exists: the path in <code>--engine</code> or the <code>SALVAGE_ENGINE</code> environment variable, the engine your project is associated with, the newest
+      engine the Epic Games Launcher has installed, and the newest engine in the Launcher's default folder.
+    </p>
+
+    <h2>What it prints</h2>
+    <p>Here is doctor on a 16 GB Apple M4 Mac with Unreal Engine 5.8 installed from the Launcher:</p>
+    <Terminal
+      command="salvage doctor"
+      output={doctor}
+      caption="Real output from one machine, November 2026. Ten checks pass and two are worth a look."
+    />
+    <p>Each line starts with a mark:</p>
+    <dl class="marks">
+      <div><dt class="ok">✓</dt><dd>Passes. Nothing to do.</dd></div>
+      <div><dt class="warn">!</dt><dd>Worth a look. It works, but it's slower or harder than it needs to be.</dd></div>
+      <div><dt class="bad">✗</dt><dd>Needs fixing. Unreal won't build, render or debug properly until it is.</dd></div>
+      <div><dt class="dim">–</dt><dd>Doesn't apply here, such as Rosetta on an Intel Mac.</dd></div>
+    </dl>
+    <p>
+      Anything that isn't a pass comes with an arrow and what to do about it, and often the exact command. Doctor
+      never runs those commands for you. Some need <code>sudo</code>, so read them before you paste them.
+    </p>
+    <p>
+      Doctor exits with 0 when nothing fails, even if some checks are worth a look, and 1 when anything fails. It exits
+      with 2 if it can't start, for example when <code>--engine</code> points at a folder that isn't an engine.
+    </p>
+
+    <h2>The 12 checks</h2>
+    {groups.map((group) => (
+      <>
+        <h3>{group.title}</h3>
+        <dl class="checks">
+          {group.checks.map((c) => (
+            <div>
+              <dt>{c.name}</dt>
+              <dd>{c.what}{c.mac && <span class="mac"> macOS only.</span>}</dd>
+            </div>
+          ))}
+        </dl>
+      </>
+    ))}
+
+    <h2>On Windows and Linux</h2>
+    <p>
+      Doctor runs there too, with six checks: the engine install, free space, spaces in paths, Zen and DDC, RAM and
+      swap. The other six only apply on macOS, and doctor leaves them out of the list and says so.
+    </p>
+
+    <h2>JSON</h2>
+    <p>
+      <code>--json</code> prints the same report for scripts. <code>schema</code> is the version of the layout, and
+      goes up if it changes in a way that breaks readers. Each check has an <code>id</code>, a <code>status</code> (<code>pass</code>, <code>warn</code>, <code>fail</code> or <code>skip</code>), a <code>summary</code>,
+      and <code>details</code> and a <code>fix</code> when there are any. Memory is in bytes.
+    </p>
+    <Terminal
+      command="salvage doctor --json"
+      output={doctorJson}
+      marks={false}
+      caption="The same run as above, cut down to two of the twelve checks."
+    />
+
+    <GetSalvage />
+  </div>
+</Page>
+<style>
+  .marks {
+    margin: var(--s-4) 0 0;
+    display: grid;
+    gap: var(--s-2);
+  }
+  .marks > div {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+  .marks dt {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: var(--step-1);
+  }
+  .marks dd {
+    margin: 0;
+  }
+  .ok {
+    color: var(--link);
+  }
+  .warn {
+    color: var(--mark);
+  }
+  .bad {
+    color: var(--accent);
+  }
+  .dim {
+    color: var(--muted);
+  }
+  .checks {
+    margin: var(--s-3) 0 0;
+  }
+  .checks > div {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding-block: var(--s-4);
+    border-top: 2px solid var(--rule);
+  }
+  .checks dt {
+    font-stretch: var(--stretch-sign);
+    font-weight: 750;
+  }
+  .checks dd {
+    margin: 0;
+  }
+  .mac {
+    color: var(--muted);
+  }
+  @media (max-width: 600px) {
+    .checks > div {
+      grid-template-columns: 1fr;
+      gap: var(--s-1);
+    }
+  }
+</style>

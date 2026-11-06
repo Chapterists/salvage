@@ -1,0 +1,21 @@
+---
+// Renders docs/benchmark-recipe.md from the repository, so the site and GitHub
+// always say the same thing. Edit that file, not this page.
+import Page from "../../layouts/Page.astro";
+import { Content } from "../../../../docs/benchmark-recipe.md";
+---
+<Page
+  title="Capture memory runs you can compare"
+  compact
+  description="How to take memreports and LLM CSVs from an Unreal Engine game so two runs can be compared with salvage soundings."
+  dek="Memory numbers move with almost everything. This is how to take captures from an Unreal Engine game that still mean something when you put two of them side by side."
+>
+  <div class="prose wide">
+    <Content />
+    <h2>Next</h2>
+    <p>
+      <a href="/charts/salvage-soundings/">See where a game's memory goes</a> walks through what soundings prints for
+      the captures you take here.
+    </p>
+  </div>
+</Page>
