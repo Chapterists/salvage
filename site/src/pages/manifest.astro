@@ -20,6 +20,8 @@ type Tool = {
     what: string;
     changes: string;
     chart: { href: string; title: string };
+    /** Mature projects that do the same job, which some people will prefer. */
+    others?: { name: string; href: string; note: string }[];
   }[];
 };
 
@@ -49,6 +51,18 @@ const tools: Tool[] = [
         what: "Reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed.",
         changes: "Nothing. It reads capture files. It measures memory; it doesn't save any.",
         chart: { href: "/charts/salvage-soundings/", title: "See where a game's memory goes" },
+        others: [
+          {
+            name: "Memory Insights",
+            href: "https://dev.epicgames.com/documentation/en-us/unreal-engine/memory-insights-in-unreal-engine",
+            note: "Epic's allocation-level analysis, with call stacks",
+          },
+          {
+            name: "memreport-insights",
+            href: "https://github.com/cignoir/memreport-insights",
+            note: "a visual memreport viewer in the browser",
+          },
+        ],
       },
       {
         name: "salvage lldb",
@@ -56,6 +70,13 @@ const tools: Tool[] = [
         what: "Installs formatters that make Xcode and LLDB show Unreal types (FString, TObjectPtr, TSharedPtr, FText, FVector and more) as values instead of raw memory, and takes them out again.",
         changes: "Writes the formatter script to Salvage's data folder and adds one marked line to ~/.lldbinit, and to ~/.lldbinit-Xcode if you have one, after backing each file up. salvage lldb uninstall removes both.",
         chart: { href: "/charts/salvage-lldb/", title: "Read Unreal types in the debugger" },
+        others: [
+          {
+            name: "Epic's formatters",
+            href: "/charts/salvage-lldb/#epics-formatters-and-ours",
+            note: "ship with the engine and cover TMap, TSet and more; load both",
+          },
+        ],
       },
       {
         name: "salvage clangd",
@@ -63,6 +84,18 @@ const tools: Tool[] = [
         what: "Sets up clangd for a project's C++ so VS Code or Neovim can complete, navigate and check Unreal code without Xcode's indexer. It runs UnrealBuildTool to write the compile database and adds a .clangd tuned for Unreal. --refresh skips UnrealBuildTool when nothing that shapes the database has changed. Tried on macOS with Epic's C++ templates; Windows and Linux are unit-tested only, and it hasn't been tried on a large project yet.",
         changes: "Writes compile_commands.json, .clangd and Intermediate/Salvage/clangd.json into the project, plus .vscode/settings.json with --vscode and .nvim.lua with --neovim. Backs up any of its config files it replaces. To undo, delete those files, or put the backups back.",
         chart: { href: "/charts/salvage-clangd/", title: "Write Unreal C++ in VS Code or Neovim" },
+        others: [
+          {
+            name: "unreal-clangd",
+            href: "https://github.com/boocs/unreal-clangd",
+            note: "a VS Code extension; Mac support not yet proven",
+          },
+          {
+            name: "UnrealEngine.nvim",
+            href: "https://github.com/mbwilding/UnrealEngine.nvim",
+            note: "a Neovim plugin for Linux, Mac and Windows",
+          },
+        ],
       },
     ],
   },
@@ -99,6 +132,18 @@ const tools: Tool[] = [
                     <dl class="facts">
                       <div><dt>Changes</dt><dd>{j.changes}</dd></div>
                       <div><dt>The chart</dt><dd><a href={j.chart.href}>{j.chart.title}</a></dd></div>
+                      {j.others && (
+                        <div>
+                          <dt>Also good</dt>
+                          <dd>
+                            {j.others.map((o, i) => (
+                              <>
+                                <a href={o.href}>{o.name}</a>, {o.note}{i < j.others!.length - 1 ? ". " : "."}
+                              </>
+                            ))}
+                          </dd>
+                        </div>
+                      )}
                     </dl>
                   </li>
                 ))}

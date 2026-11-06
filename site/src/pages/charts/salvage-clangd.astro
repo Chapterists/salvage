@@ -18,6 +18,29 @@ const trimmed =
   dek="clangd, the C++ language server, gives VS Code and Neovim completion, go-to-definition and live errors. salvage clangd sets it up for an Unreal project from the exact compile commands UnrealBuildTool uses, so you can write C++ without opening Xcode."
 >
   <div class="prose wide">
+    <h2>Other good tools</h2>
+    <p>
+      If you work in one editor, there are projects built for it that do more than <code>salvage clangd</code>, and
+      they're worth a look first:
+    </p>
+    <ul>
+      <li>
+        <strong><a href="https://github.com/boocs/unreal-clangd">unreal-clangd</a></strong> is an actively maintained
+        VS Code extension for Unreal and clangd. It sets up the project and handles completion and formatting, for
+        Unreal 5.2 and later. Its README says Mac support hasn't been proven yet, and asks Mac users to report back.
+      </li>
+      <li>
+        <strong><a href="https://github.com/mbwilding/UnrealEngine.nvim">UnrealEngine.nvim</a></strong> is an
+        MIT-licensed Neovim plugin for Linux, Mac and Windows. It generates the same compile database
+        and <code>.clangd</code> through UnrealBuildTool, builds from inside Neovim, and opens files you click in the Unreal
+        editor in your running Neovim.
+      </li>
+    </ul>
+    <p>
+      <code>salvage clangd</code> is the plain version: one command, no editor plugin, the same setup for any editor that
+      speaks clangd, and tried on macOS. If one of those fits how you work, use it.
+    </p>
+
     <h2>What you need</h2>
     <ul>
       <li>
@@ -95,8 +118,7 @@ salvage clangd --vscode     # or --neovim, or both</code></pre>
     <h2>4. Keep it current</h2>
     <p>
       The database lists files and flags, so it goes stale when you add or remove a source file, or change
-      a <code>.Build.cs</code>, <code>.Target.cs</code>, <code>.uproject</code> or <code>.uplugin</code>.
-      Run <code>salvage clangd --refresh</code> after those. It only runs UnrealBuildTool when something that shapes
+      a <code>.Build.cs</code>, <code>.Target.cs</code>, <code>.uproject</code> or <code>.uplugin</code>. Run <code>salvage clangd --refresh</code> after those. It only runs UnrealBuildTool when something that shapes
       the database has changed:
     </p>
     <Terminal command="salvage clangd --vscode --refresh" output={refresh} caption="Nothing changed, so it skipped UnrealBuildTool. This run took 0.01 seconds." />
