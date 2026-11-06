@@ -47,6 +47,15 @@ salvage soundings before.memreport after.memreport  # what changed
 salvage soundings run.memreport --require 8         # exit 1 unless it fits 8 GB (for CI)
 ```
 
+**`salvage trim`** writes memory tiers for 8, 12 and 16 GB machines into a project's config: a smaller Nanite streaming pool on all three, a smaller Lumen surface cache and earlier garbage collection on 12 and 8 GB, and fewer virtual shadow map pages and a smaller texture pool on 8 GB. The tiers use Unreal's own device profiles and memory buckets, so each machine size gets its own settings and machines with more than 16 GB keep stock ones. No tier pins a value above what a quality preset would use. Every value has its reason written next to it, with a link to Epic's page for the setting where there is one. `--editor` adds a low-RAM preset for the editor (fewer shader compile workers with a memory limit, static Content Browser thumbnails). It backs up each file before changing it, and `--undo` takes everything out again. [docs/soundings/trim-third-person-m4-16gb.md](docs/soundings/trim-third-person-m4-16gb.md) has before-and-after measurements on one Mac, including what didn't help.
+
+```sh
+salvage trim --dry-run   # which files would change, and what would be written; run in the project folder
+salvage trim             # write the tiers
+salvage trim --editor    # also the low-RAM editor preset
+salvage trim --undo      # take everything out again
+```
+
 **`salvage lldb`** makes Xcode and LLDB show Unreal types as values instead of raw memory. This one does change your machine: `install` writes the formatter script to Salvage's data folder and adds one marked line to `~/.lldbinit` (and to `~/.lldbinit-Xcode`, if you have one), after backing each file up. `uninstall` takes both out again.
 
 ```sh
@@ -79,7 +88,7 @@ Once there's a release, prebuilt binaries for macOS, Windows and Linux will be o
 
 ## Status
 
-Early. One tool is in the box, with no release yet. `doctor` and `soundings` are how we find what to fix and check the fixes; neither cuts memory use by itself. When a change does, it will be listed here with before-and-after measurements on real machines.
+Early. One tool is in the box, with no release yet. `doctor` and `soundings` are how we find what to fix and check the fixes; neither cuts memory use by itself. `trim` is the first tool that does, and its measurements so far are in [docs/soundings](docs/soundings/).
 
 ## Contributing
 
