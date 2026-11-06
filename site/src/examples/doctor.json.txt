@@ -4,8 +4,8 @@
   "command": "doctor",
   "ok": true,
   "counts": {
-    "pass": 10,
-    "warn": 2,
+    "pass": 9,
+    "warn": 3,
     "fail": 0,
     "skip": 0
   },
@@ -39,10 +39,10 @@
       "group": "debugging",
       "title": "~/.lldbinit",
       "status": "warn",
-      "summary": "Missing, so FString, TArray and friends show up as raw memory in the debugger",
+      "summary": "Missing, so FString, TSharedPtr, TObjectPtr and friends show up as raw memory in the debugger",
       "fix": {
-        "hint": "Load Unreal's formatters:",
-        "command": "echo 'command script import \"/Users/Shared/Epic Games/UE_5.8/Engine/Extras/LLDBDataFormatters/UEDataFormatters_2ByteChars.py\"' >> ~/.lldbinit"
+        "hint": "Install Salvage's Unreal formatters (adds one marked line):",
+        "command": "salvage lldb install"
       }
     }
   ]

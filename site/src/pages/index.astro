@@ -12,21 +12,21 @@ const recent = (await logbookEntries()).slice(0, 3);
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="headline">
-        <h1 class="hull">Your machine has more in it than you think.</h1>
+        <h1 class="hull">The tools we use to make our stories.</h1>
       </div>
       <div class="above">
         <p class="sub">
-          RAM is expensive right now, and high-end games keep asking for more of it. Salvage is open-source tools
-          and engine fixes that get more out of the hardware you already have, starting with Unreal Engine. It's early: two tools are in the
-          repository, and there's no release yet.
+          Salvage is Chapterists' open-source toolbox. Chapterists is a story company, and making stories takes a lot
+          of tools. When one we've built is worth keeping, we haul it up, clean it off and share it here, under the MIT
+          license.
         </p>
       </div>
       <div class="bow-cell">
         <Bow />
       </div>
       <div class="below">
-        <p class="tagline hull">We don't sell you a new ship. We get yours sailing.</p>
-        <p class="caption">Draft marks in gigabytes. A ship that carries less rides higher. (An illustration, not a measurement.)</p>
+        <p class="tagline hull">First in the hold: Unreal Engine, lighter on low-RAM machines and better on a Mac.</p>
+        <p class="caption">Draft marks in gigabytes: a game that carries less memory rides higher. (An illustration, not a measurement.)</p>
       </div>
     </div>
   </section>
@@ -34,20 +34,42 @@ const recent = (await logbookEntries()).slice(0, 3);
   <Waterline above="var(--deep-sea)" below="var(--ground)" shape="angle-reverse" stripe="var(--antifouling)" />
 
   <section class="why wrap">
-    <h2 class="hull">Upgrading is the usual answer. Right now it's an expensive one.</h2>
+    <h2 class="hull">Every project leaves good tools behind.</h2>
     <div class="why-copy">
       <p>
-        A machine gets written off when a game or an editor wants more memory than it has. We would rather find out
-        how much of that memory the work really needs, and cut what it doesn't.
+        A script that fixed a build. A check that caught a problem before it cost a day. A setting that made a slow
+        machine usable. Most of what a team builds to get the work done stays buried in the project that needed it.
       </p>
       <p>
-        A fix like that helps everyone. The old laptop gets a game that runs. The big workstation gets its memory
-        back.
+        Salvage is where we bring those up. A tool comes aboard when it's useful beyond the job it was made for, and
+        it goes on the <a href="/manifest/">manifest</a> with what it does and what it changes.
       </p>
+      <p>It starts with Unreal Engine. More tools will join as our stories need them.</p>
     </div>
   </section>
 
-  <Waterline above="var(--ground)" below="var(--rescue-orange)" shape="angle" />
+  <Waterline above="var(--ground)" below="var(--ground-2)" shape="angle" />
+
+  <section class="unreal">
+    <div class="wrap">
+      <h2 class="hull">Your machine has more in it than you think.</h2>
+      <div class="unreal-copy">
+        <p class="lede">The first two workstreams are about Unreal Engine.</p>
+        <p>
+          RAM is expensive right now, and high-end games keep asking for more of it. A machine gets written off when
+          a game or an editor wants more memory than it has, and upgrading is the usual answer. We would rather find
+          out how much of that memory the work really needs, and cut what it doesn't.
+        </p>
+        <p>
+          A fix like that helps everyone. The old laptop gets a game that runs. The big workstation gets its memory
+          back.
+        </p>
+        <p class="tagline hull">We don't sell you a new ship. We get yours sailing.</p>
+      </div>
+    </div>
+  </section>
+
+  <Waterline above="var(--ground-2)" below="var(--rescue-orange)" shape="angle-reverse" />
   <section class="punchout">
     <div class="wrap">
       <h2 class="hull">Somebody called your machine a wreck. <span>We'd like a look at it.</span></h2>
@@ -60,7 +82,7 @@ const recent = (await logbookEntries()).slice(0, 3);
   <Waterline above="var(--rescue-orange)" below="var(--ground)" shape="angle-reverse" />
 
   <section class="streams wrap" aria-labelledby="streams-title">
-    <h2 class="hull streams-title" id="streams-title">What we're working on</h2>
+    <h2 class="hull streams-title" id="streams-title">The first two workstreams</h2>
 
     <article class="stream" id="lighter-unreal">
       <IconLighter class="stream-icon" />
@@ -74,7 +96,7 @@ const recent = (await logbookEntries()).slice(0, 3);
           we're up against.
         </p>
         <p class="now">
-          First tool: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
+          In the box: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
           and shows where the memory goes, and whether the run fits 8, 12 and 16 GB machines.
         </p>
       </div>
@@ -90,8 +112,8 @@ const recent = (await logbookEntries()).slice(0, 3);
           they belong there, not like they're putting up with it.
         </p>
         <p class="now">
-          First tool: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
-          the things that make Unreal slow or broken, and says how to fix each one.
+          In the box: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
+          the things that make Unreal slow or broken, and <a href="/charts/salvage-lldb/"><code>salvage lldb</code></a> makes Unreal types readable in Xcode and LLDB.
         </p>
       </div>
     </article>
@@ -129,14 +151,15 @@ const recent = (await logbookEntries()).slice(0, 3);
 
   <section class="deck wrap">
     <div>
-      <h2 class="hull">Two tools in the repo. No release yet.</h2>
+      <h2 class="hull">One tool in the box. No release yet.</h2>
       <p>
-        <code>salvage doctor</code> and <code>salvage soundings</code> are in the repository, and you
-        can <a href="/charts/salvage-doctor/#get-salvage">build them from source</a> today. There's nothing to download
+        The first tool is the <code>salvage</code> command, with three jobs so
+        far: <code>doctor</code>, <code>soundings</code> and <code>lldb</code>. You
+        can <a href="/charts/salvage-doctor/#get-salvage">build it from source</a> today. There's nothing to download
         yet.
       </p>
       <p>
-        Neither one saves memory by itself. Doctor finds what's wrong with a Mac's setup; soundings measures where a
+        None of it saves memory by itself. Doctor finds what's wrong with a Mac's setup, and soundings measures where a
         game's memory goes. They're how we'll find what to fix, and how we'll check the fixes. When a change does cut
         memory, it goes on the <a href="/manifest/">manifest</a> with its <a href="/soundings/">soundings</a>:
         before-and-after numbers on real machines.
@@ -214,10 +237,10 @@ const recent = (await logbookEntries()).slice(0, 3);
     margin: var(--s-5) 0 0;
   }
   .tagline {
-    font-size: var(--step-3);
+    font-size: var(--step-2);
     font-weight: 800;
     margin: 0;
-    max-width: 18ch;
+    max-width: 22ch;
   }
   .caption {
     font-family: var(--font-mono);
@@ -286,6 +309,45 @@ const recent = (await logbookEntries()).slice(0, 3);
   }
   .why-copy p + p {
     margin-top: var(--s-4);
+  }
+
+  /* ---- The Unreal workstreams' pitch ---- */
+  .unreal {
+    background: var(--ground-2);
+    padding-block: var(--s-7) var(--s-6);
+  }
+  .unreal .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--s-8);
+  }
+  .unreal h2 {
+    font-size: clamp(2rem, 1.2rem + 2.6vw, 3.5rem);
+  }
+  .unreal-copy {
+    font-size: var(--step-0);
+    line-height: 1.6;
+  }
+  .unreal-copy p {
+    margin: 0;
+  }
+  .unreal-copy p + p {
+    margin-top: var(--s-4);
+  }
+  .unreal-copy .lede {
+    font-size: var(--step-1);
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  .unreal-copy .tagline {
+    font-size: var(--step-2);
+    margin-top: var(--s-5);
+  }
+  @media (max-width: 860px) {
+    .unreal .wrap {
+      grid-template-columns: 1fr;
+      row-gap: var(--s-5);
+    }
   }
 
   /* ---- The punchout: Rescue Orange, used big once ---- */

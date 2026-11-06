@@ -1,49 +1,103 @@
 ---
 import Page from "../layouts/Page.astro";
+import IconSalvageCli from "../components/IconSalvageCli.astro";
 
-const tools = [
+// Everything in the toolbox, one row per tool. A tool can be any shape: a
+// command-line program, a Mac app, an Unreal plugin, an editor add-on. Each
+// gets its own icon in the house style (see IconSalvageCli.astro), its own
+// releases, and, if it has several jobs, a list of them under it.
+//
+// To add a tool: draw its icon as a component, then add an entry here.
+type Tool = {
+  name: string;
+  kind: string;
+  icon: typeof IconSalvageCli;
+  what: string;
+  facts: [string, string][];
+  jobs?: {
+    name: string;
+    workstream: string;
+    what: string;
+    changes: string;
+    chart: { href: string; title: string };
+  }[];
+};
+
+const tools: Tool[] = [
   {
-    name: "salvage doctor",
-    workstream: "Unreal on Mac",
-    what: "Runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix.",
-    runs: "macOS, with all 12 checks. Windows and Linux, with the 6 that aren't Mac-specific.",
-    tested: "Built and tested on macOS, Windows and Linux in CI. Run against Unreal Engine 5.8 on an Apple M4 Mac.",
-    changes: "Nothing. It reads your setup and prints fixes for you to run.",
-    chart: "/charts/salvage-doctor/",
-    chartTitle: "Check a Mac for Unreal",
-  },
-  {
-    name: "salvage soundings",
-    workstream: "Lighter Unreal",
-    what: "Reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed.",
-    runs: "macOS, Windows and Linux.",
-    tested: "Built and tested on macOS, Windows and Linux in CI, against the sample captures in its tests.",
-    changes: "Nothing. It reads capture files. It measures memory; it doesn't save any.",
-    chart: "/charts/salvage-soundings/",
-    chartTitle: "See where a game's memory goes",
+    name: "salvage",
+    kind: "Command-line tool",
+    icon: IconSalvageCli,
+    what: "One program with a subcommand for each job, for macOS, Windows and Linux.",
+    facts: [
+      ["Runs on", "macOS, Windows and Linux."],
+      ["Tested", "Built and tested on all three in CI. Run against Unreal Engine 5.8 on an Apple M4 Mac."],
+      ["Status", "In the repository, with no release yet. You build it from source."],
+      ["Remove it", "Run salvage lldb uninstall if you installed the debugger formatters, then cargo uninstall salvage."],
+    ],
+    jobs: [
+      {
+        name: "salvage doctor",
+        workstream: "Unreal on Mac",
+        what: "Runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific.",
+        changes: "Nothing. It reads your setup and prints fixes for you to run.",
+        chart: { href: "/charts/salvage-doctor/", title: "Check a Mac for Unreal" },
+      },
+      {
+        name: "salvage soundings",
+        workstream: "Lighter Unreal",
+        what: "Reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed.",
+        changes: "Nothing. It reads capture files. It measures memory; it doesn't save any.",
+        chart: { href: "/charts/salvage-soundings/", title: "See where a game's memory goes" },
+      },
+      {
+        name: "salvage lldb",
+        workstream: "Unreal on Mac",
+        what: "Installs formatters that make Xcode and LLDB show Unreal types (FString, TObjectPtr, TSharedPtr, FText, FVector and more) as values instead of raw memory, and takes them out again.",
+        changes: "Writes the formatter script to Salvage's data folder and adds one marked line to ~/.lldbinit, and to ~/.lldbinit-Xcode if you have one, after backing each file up. salvage lldb uninstall removes both.",
+        chart: { href: "/charts/salvage-lldb/", title: "Read Unreal types in the debugger" },
+      },
+    ],
   },
 ];
 ---
 <Page
   title="Manifest"
-  dek="Every Salvage tool: what it does, where it runs, and what it changes. Two tools are in the repository. Neither has a release yet."
+  dek="Everything in the toolbox: what each tool does, where it runs, and what it changes. One tool so far, the salvage command, with three jobs. It has no release yet."
 >
   <ol class="manifest">
     {tools.map((t) => (
-      <li>
-        <div class="head">
-          <h2>{t.name}</h2>
-          <p class="stream">{t.workstream}</p>
+      <li class="tool">
+        <div class="tool-head">
+          <t.icon class="tool-icon" />
+          <div>
+            <h2><code>{t.name}</code></h2>
+            <p class="kind">{t.kind}</p>
+          </div>
         </div>
-        <div class="body">
+        <div class="tool-body">
           <p class="what">{t.what}</p>
-          <dl>
-            <div><dt>Runs on</dt><dd>{t.runs}</dd></div>
-            <div><dt>Tested</dt><dd>{t.tested}</dd></div>
-            <div><dt>Changes</dt><dd>{t.changes}</dd></div>
-            <div><dt>Status</dt><dd>In the repository. No release yet, so you build it from source.</dd></div>
+          <dl class="facts">
+            {t.facts.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
-          <p class="chart">The chart: <a href={t.chart}>{t.chartTitle}</a></p>
+
+          {t.jobs && (
+            <>
+              <h3 class="jobs-title">Its jobs</h3>
+              <ol class="jobs">
+                {t.jobs.map((j) => (
+                  <li>
+                    <h4><code>{j.name}</code> <span class="stream">{j.workstream}</span></h4>
+                    <p>{j.what}</p>
+                    <dl class="facts">
+                      <div><dt>Changes</dt><dd>{j.changes}</dd></div>
+                      <div><dt>The chart</dt><dd><a href={j.chart.href}>{j.chart.title}</a></dd></div>
+                    </dl>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
         </div>
       </li>
     ))}
@@ -51,23 +105,23 @@ const tools = [
 
   <div class="prose">
     <h2>What goes on the manifest</h2>
-    <p>A tool goes on this list when it's in the repository and does what it says. Each entry says:</p>
+    <p>
+      A tool goes on this list when it's in the repository and does what it says. Tools come aboard as the work on
+      our stories needs them, and they can be any shape: a command-line program, a Mac app, an Unreal plugin, an
+      editor add-on. Each one has its own releases. Each entry says:
+    </p>
     <ul>
-      <li>What it does, in a sentence or two, and which workstream it belongs to.</li>
+      <li>What it does, and which workstream it belongs to.</li>
       <li>Where it runs and where it has been tested.</li>
-      <li>What it changes on your machine or in your project. Both tools so far only read.</li>
+      <li>What it changes on your machine or in your project, and how to undo it.</li>
       <li>
         For a tool that changes memory use, its <a href="/soundings/">soundings</a>: what it changed, measured before
-        and after on named machines. Neither tool here changes memory use, so neither has soundings of its own.
+        and after on named machines. Nothing here changes memory use yet, so there are no soundings of that kind.
       </li>
     </ul>
     <p>
-      Both tools are subcommands of one program, <code>salvage</code>. To remove it,
-      run <code>cargo uninstall salvage</code>.
-    </p>
-    <p>
-      Fixes that belong in the engine itself go upstream to Epic Games as pull requests, so they won't appear on this
-      list as tools. The <a href="/logbook/">logbook</a> will record them.
+      Fixes that belong in Unreal Engine itself go upstream to Epic Games as pull requests, so they won't appear on
+      this list as tools. The <a href="/logbook/">logbook</a> will record them.
     </p>
   </div>
 </Page>
@@ -76,27 +130,47 @@ const tools = [
     list-style: none;
     margin: 0 0 var(--s-8);
     padding: 0;
-    max-width: 62rem;
+    max-width: 66rem;
   }
-  .manifest > li {
+  /* One row per tool: who it is on the left, what it does on the right. Rows
+     stack with a rule between them, so the list grows without turning into a
+     grid of boxes. */
+  .tool {
     display: grid;
     grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
     gap: var(--s-6);
-    padding-block: var(--s-6);
+    padding-block: var(--s-6) var(--s-7);
     border-top: 2px solid var(--text);
   }
-  .manifest > li + li {
+  .tool + .tool {
     border-top-color: var(--rule);
   }
-  .head h2 {
+  .tool-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-5);
+    align-self: start;
+  }
+  .tool-head :global(.tool-icon) {
+    width: 6rem;
+    height: 6rem;
+    flex: none;
+    filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.28));
+  }
+  .tool:hover .tool-head :global(.tool-icon) {
+    transform: translateY(-4px) rotate(-4deg);
+  }
+  .tool-head h2 {
+    margin: 0;
+    font-size: var(--step-3);
+    line-height: 1.1;
+  }
+  .tool-head code {
     font-family: var(--font-mono);
     font-weight: 600;
-    font-size: var(--step-1);
-    line-height: 1.3;
-    margin: 0;
     color: var(--mark);
   }
-  .stream {
+  .kind {
     margin: var(--s-2) 0 0;
     font-stretch: var(--stretch-sign);
     font-weight: 700;
@@ -106,32 +180,75 @@ const tools = [
     font-size: var(--step-1);
     line-height: 1.5;
   }
-  dl {
-    margin: var(--s-4) 0 var(--s-4);
+  .facts {
+    margin: var(--s-4) 0 0;
     font-size: var(--step--1);
   }
-  dl > div {
+  .facts > div {
     display: grid;
     grid-template-columns: 6rem minmax(0, 1fr);
     gap: var(--s-4);
     padding-block: var(--s-2);
     border-bottom: 1px solid var(--rule);
   }
-  dt {
+  .facts dt {
     font-weight: 700;
     color: var(--muted);
   }
-  dd {
+  .facts dd {
     margin: 0;
   }
-  .chart {
+  .jobs-title {
+    margin: var(--s-7) 0 0;
+    font-stretch: var(--stretch-sign);
+    font-weight: 750;
+    font-size: var(--step-1);
+  }
+  .jobs {
+    list-style: none;
+    margin: var(--s-3) 0 0;
+    padding: 0;
+    border-left: 3px solid var(--antifouling);
+  }
+  .jobs > li {
+    padding: var(--s-4) 0 var(--s-5) var(--s-5);
+  }
+  .jobs > li + li {
+    border-top: 2px solid var(--rule);
+  }
+  .jobs h4 {
     margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem var(--s-3);
+  }
+  .jobs h4 code {
+    font-family: var(--font-mono);
     font-weight: 600;
+    font-size: var(--step-1);
+    color: var(--mark);
+  }
+  .jobs .stream {
+    font-stretch: var(--stretch-sign);
+    font-weight: 700;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .jobs p {
+    margin: var(--s-2) 0 0;
   }
   @media (max-width: 760px) {
-    .manifest > li {
+    .tool {
       grid-template-columns: 1fr;
-      gap: var(--s-4);
+      gap: var(--s-5);
+    }
+    .tool-head :global(.tool-icon) {
+      width: 4.5rem;
+      height: 4.5rem;
+    }
+    .jobs > li {
+      padding-left: var(--s-4);
     }
   }
 </style>
