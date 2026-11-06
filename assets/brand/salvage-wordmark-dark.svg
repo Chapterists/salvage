@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 684 100" width="684" height="100" role="img" aria-label="Salvage">
+<title>Salvage</title>
+  <clipPath id="wm-above"><rect x="-10" y="-10" width="704" height="74"/></clipPath>
+  <clipPath id="wm-below"><rect x="-10" y="68" width="704" height="42"/></clipPath>
+  <g fill="#F4F1EA" clip-path="url(#wm-above)">
+    <path transform="translate(0 0)" d="M100 0V22H30V39H78A22 22 0 0 1 100 61V78A22 22 0 0 1 78 100H0V78H70V61H22A22 22 0 0 1 0 39V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(106 0)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(226 0)" d="M0 0H30V78H84V100H0Z"/>
+    <path transform="translate(288 0)" d="M0 0H30L55 56.82L80 0H110L66 100H44Z"/>
+    <path transform="translate(368 0)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(482 0)" d="M100 0V22H30V78H70V64H52V42H100V78A22 22 0 0 1 78 100H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(594 0)" d="M0 0H90V22H30V39H80V61H30V78H90V100H0Z"/>
+  </g>
+  <g fill="#C2362B" clip-path="url(#wm-below)">
+    <path transform="translate(0 0)" d="M100 0V22H30V39H78A22 22 0 0 1 100 61V78A22 22 0 0 1 78 100H0V78H70V61H22A22 22 0 0 1 0 39V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(106 0)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(226 0)" d="M0 0H30V78H84V100H0Z"/>
+    <path transform="translate(288 0)" d="M0 0H30L55 56.82L80 0H110L66 100H44Z"/>
+    <path transform="translate(368 0)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(482 0)" d="M100 0V22H30V78H70V64H52V42H100V78A22 22 0 0 1 78 100H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(594 0)" d="M0 0H90V22H30V39H80V61H30V78H90V100H0Z"/>
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 854 128" width="854" height="128" role="img" aria-label="Salvage">
+<title>Salvage</title>
+  <circle cx="64" cy="64" r="46.5" fill="none" stroke="#FF5A1F" stroke-width="31"/>
+  <path fill="#F4F1EA" d="M118.74 93.11A62 62 0 0 1 93.11 118.74L78.55 91.37A31 31 0 0 0 91.37 78.55Z"/>
+  <path fill="#F4F1EA" d="M34.89 118.74A62 62 0 0 1 9.26 93.11L36.63 78.55A31 31 0 0 0 49.45 91.37Z"/>
+  <path fill="#F4F1EA" d="M9.26 34.89A62 62 0 0 1 34.89 9.26L49.45 36.63A31 31 0 0 0 36.63 49.45Z"/>
+  <path fill="#F4F1EA" d="M93.11 9.26A62 62 0 0 1 118.74 34.89L91.37 49.45A31 31 0 0 0 78.55 36.63Z"/>
+  <circle cx="64" cy="64" r="62" fill="none" stroke="#0A1630" stroke-width="3.5"/>
+  <circle cx="64" cy="64" r="31" fill="none" stroke="#0A1630" stroke-width="3.5"/>
+  <clipPath id="wm-above"><rect x="158" y="4" width="704" height="74"/></clipPath>
+  <clipPath id="wm-below"><rect x="158" y="82" width="704" height="42"/></clipPath>
+  <g fill="#0A1630" clip-path="url(#wm-above)">
+    <path transform="translate(168 14)" d="M100 0V22H30V39H78A22 22 0 0 1 100 61V78A22 22 0 0 1 78 100H0V78H70V61H22A22 22 0 0 1 0 39V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(274 14)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(394 14)" d="M0 0H30V78H84V100H0Z"/>
+    <path transform="translate(456 14)" d="M0 0H30L55 56.82L80 0H110L66 100H44Z"/>
+    <path transform="translate(536 14)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(650 14)" d="M100 0V22H30V78H70V64H52V42H100V78A22 22 0 0 1 78 100H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(762 14)" d="M0 0H90V22H30V39H80V61H30V78H90V100H0Z"/>
+  </g>
+  <g fill="#C2362B" clip-path="url(#wm-below)">
+    <path transform="translate(168 14)" d="M100 0V22H30V39H78A22 22 0 0 1 100 61V78A22 22 0 0 1 78 100H0V78H70V61H22A22 22 0 0 1 0 39V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(274 14)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(394 14)" d="M0 0H30V78H84V100H0Z"/>
+    <path transform="translate(456 14)" d="M0 0H30L55 56.82L80 0H110L66 100H44Z"/>
+    <path transform="translate(536 14)" d="M44 0H66L110 100H80L75.16 89H34.84L30 100H0ZM55 43.18L65.92 68H44.08Z"/>
+    <path transform="translate(650 14)" d="M100 0V22H30V78H70V64H52V42H100V78A22 22 0 0 1 78 100H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/>
+    <path transform="translate(762 14)" d="M0 0H90V22H30V39H80V61H30V78H90V100H0Z"/>
+  </g>
+</svg>
