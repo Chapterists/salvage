@@ -70,7 +70,18 @@ fn tiers_land_in_the_right_buckets() {
             .iter()
             .any(|c| c.starts_with("r.Streaming.PoolSize"))
     );
-    assert!(windows_8.contains(&"r.Shadow.Virtual.MaxPhysicalPages=768".to_string()));
+    assert!(windows_8.contains(&"r.Shadow.Virtual.MaxPhysicalPages=512".to_string()));
+    // Shadow pages are pinned on 8 GB only: a higher pin would add memory at Low and Medium.
+    assert!(
+        !bucket_cvars(block, "Mac", "Smaller")
+            .iter()
+            .any(|c| c.starts_with("r.Shadow.Virtual"))
+    );
+    assert!(
+        !bucket_cvars(block, "Mac", "Default")
+            .iter()
+            .any(|c| c.starts_with("r.Shadow.Virtual"))
+    );
     assert!(
         bucket_cvars(block, "Mac", "Larger").is_empty(),
         "bigger machines are untouched"

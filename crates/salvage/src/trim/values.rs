@@ -1,9 +1,15 @@
 //! Salvage's chosen values for each tier, each with the reason for it.
 //!
-//! Engine defaults these move away from (UE 5.8): texture pool 70% of GPU memory
-//! on Mac, Nanite streaming pool 512 MB, 2048 virtual shadow map pages, Lumen
-//! surface cache atlas 4096, render target pool kept below 400 MB, low-memory GC
-//! mode off, unreachable objects purged every 60 s.
+//! What these move away from (UE 5.8): texture pool 70% of GPU memory on Mac,
+//! Nanite streaming pool 512 MB, render target pool kept below 400 MB, low-memory
+//! GC mode off, unreachable objects purged every 60 s. Virtual shadow map pages
+//! and the Lumen atlas come from the scalability presets (512 pages at Low and
+//! Medium shadows, 2048 at High, 4096 at Epic; atlas 2048 at Medium GI, 3584 at
+//! High, 4096 at Epic).
+//!
+//! A device profile value wins over every quality preset, so a tier only pins a
+//! value that is no higher than any preset that uses the feature: then no quality
+//! level ends up with more memory than it had.
 
 /// One console variable and the value a tier gives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -58,17 +64,12 @@ pub const GAME_TIERS: [Tier; 3] = [
             mac(
                 "r.Streaming.PoolSize",
                 "1000",
-                "Texture pool of 1000 MB, the size Epic gives the highest texture quality, instead\nof 70% of shared memory.",
+                "Texture pool of 1000 MB, the size Epic gives the highest texture quality, instead\nof 70% of GPU memory (8.4 GB on a 16 GB Apple silicon Mac).",
             ),
             all(
                 "r.Nanite.Streaming.StreamingPoolSize",
                 "384",
                 "Nanite streaming pool 384 MB (default 512): a quarter less mesh data kept resident.",
-            ),
-            all(
-                "r.Shadow.Virtual.MaxPhysicalPages",
-                "1536",
-                "1536 virtual shadow map pages (default 2048): about 25% less shadow memory, at the\ncost of shadow resolution when many shadowed lights are on screen.",
             ),
             all(
                 "r.RenderTargetPoolMin",
@@ -99,14 +100,9 @@ pub const GAME_TIERS: [Tier; 3] = [
                 "Nanite streaming pool 320 MB (default 512).",
             ),
             all(
-                "r.Shadow.Virtual.MaxPhysicalPages",
-                "1024",
-                "1024 virtual shadow map pages (default 2048): half the shadow page memory.",
-            ),
-            all(
                 "r.LumenScene.SurfaceCache.AtlasSize",
                 "2048",
-                "Lumen surface cache atlas 2048 (default 4096): a quarter of the atlas memory, with\nlower-detail bounce lighting on surfaces far from the camera.",
+                "Lumen surface cache atlas 2048, the Medium GI preset's size (High uses 3584, Epic\n4096): less atlas memory, with lower-detail bounce lighting further from the camera.\nNo preset that uses Lumen goes below 2048, so this never adds memory.",
             ),
             all(
                 "r.RenderTargetPoolMin",
@@ -147,13 +143,15 @@ pub const GAME_TIERS: [Tier; 3] = [
             ),
             all(
                 "r.Shadow.Virtual.MaxPhysicalPages",
-                "768",
-                "768 virtual shadow map pages (default 2048).",
+                "512",
+                "512 virtual shadow map pages, what the Low and Medium shadow presets use (High
+uses 2048, Epic 4096): blurrier shadows at High and Epic. Only this tier pins it:
+on bigger machines a pin above 512 would add memory at Low and Medium.",
             ),
             all(
                 "r.LumenScene.SurfaceCache.AtlasSize",
                 "2048",
-                "Lumen surface cache atlas 2048 (default 4096).",
+                "Lumen surface cache atlas 2048, the Medium GI preset's size.",
             ),
             all(
                 "r.RenderTargetPoolMin",
