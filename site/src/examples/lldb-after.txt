@@ -1,0 +1,6 @@
+(FString) greeting = "Ahoy, Unreal" {...}
+(TObjectPtr<AActor>) ship_ptr = Ship_1 (Actor) {...}
+(FText) text = "Anchors aweigh" {...}
+(FGameplayTag) tag = Weather.Storm {...}
+(FVector) position = (X=1.5, Y=-2, Z=300.25) {...}
+(TSharedPtr<FCrate>) shared_crate = refs=2 0x16fdfdbf0 {...}

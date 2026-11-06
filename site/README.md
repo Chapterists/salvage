@@ -23,6 +23,7 @@ CI builds the site on every pull request that touches it (`.github/workflows/sit
 | `src/content/logbook/` | Logbook entries, one markdown file each. |
 | `src/pages/charts/` | One page per chart. `capturing-memory-runs.astro` renders `docs/benchmark-recipe.md`, so edit that file, not the page. |
 | `src/examples/` | Real terminal output shown in the charts, captured with `--color never` and `COLUMNS=80`. Doctor's comes from one Mac; soundings' comes from the sample captures in `crates/salvage/tests/fixtures/`. Regenerate them when the output changes. |
+| `src/pages/manifest.astro` | The toolbox, one row per tool. To add a tool, draw its icon as a component (see `IconSalvageCli.astro`: a 128-unit rounded tile, waterline, ship colors) and add an entry. |
 | `src/components/GetSalvage.astro` | The one place the site says how to install `salvage`. Change it (and the README's "Get it" section) when there's a release. |
 | `src/layouts/` | `Base.astro` (header, footer, theme) and `Page.astro` (inner pages with a title band). |
 | `src/components/` | The mark, wordmark, waterline dividers, the hero bow and the workstream icons. All hand-drawn SVG. |

@@ -10,8 +10,10 @@ interface Props {
   caption?: string;
   /** Color status marks and bars (off for JSON). */
   marks?: boolean;
+  /** The prompt before the command: "$" for a shell, "(lldb)" for LLDB. */
+  prompt?: string;
 }
-const { command, output, caption, marks = true } = Astro.props;
+const { command, output, caption, marks = true, prompt = "$" } = Astro.props;
 
 // The CLI draws bars from block characters in eighths of a cell. Those glyphs
 // fall back to another font and break the columns, so draw each bar as a box
@@ -42,7 +44,7 @@ const paint = (line: string) => {
 const body = output.replace(/^\n+|\s+$/g, "").split("\n").map(paint).join("\n");
 ---
 <figure class="terminal">
-  <pre><code><span class="prompt">$</span> <span class="cmd">{command}</span>
+  <pre><code><span class="prompt">{prompt}</span> <span class="cmd">{command}</span>
 {"\n"}<Fragment set:html={body} /></code></pre>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>

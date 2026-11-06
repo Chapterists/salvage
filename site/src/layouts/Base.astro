@@ -9,15 +9,15 @@ interface Props {
 }
 const {
   title,
-  description = "Open-source tools and engine fixes that get more out of the hardware you already have, starting with Unreal Engine.",
+  description = "Chapterists' open-source toolbox: the tools we use to make our stories. Starting with Unreal Engine: lighter on low-RAM machines, better on a Mac.",
 } = Astro.props;
-const fullTitle = title ? `${title} · Salvage` : "Salvage: your machine has more in it than you think";
+const fullTitle = title ? `${title} · Salvage` : "Salvage: Chapterists' open-source toolbox";
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // Link previews need an absolute URL. The source for the image is
 // assets/brand/social-preview.html.
 const socialImage = new URL("/social-preview.png", Astro.site);
 const socialImageAlt =
-  "The Salvage wordmark above the line \"Your machine has more in it than you think,\" with a lifebuoy floating on the waterline.";
+  "The Salvage wordmark above the line \"The tools we use to make our stories,\" with a lifebuoy floating on the waterline.";
 ---
 <!doctype html>
 <html lang="en" data-theme="night">

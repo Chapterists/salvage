@@ -1,0 +1,127 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import install from "../../examples/lldb-install.txt?raw";
+import uninstall from "../../examples/lldb-uninstall.txt?raw";
+import before from "../../examples/lldb-before.txt?raw";
+import after from "../../examples/lldb-after.txt?raw";
+
+// The types salvage_unreal.py covers (crates/salvage/lldb/README.md).
+const covered = [
+  ["Strings and containers", ["FString", "FUtf8String", "FName", "FText", "TStringView", "TArray", "TArrayView"]],
+  ["Pointers", ["TSharedPtr", "TSharedRef", "TWeakPtr", "TUniquePtr", "TObjectPtr", "FSoftObjectPath", "TSoftObjectPtr", "TSoftClassPtr"]],
+  ["Other types", ["TOptional", "TVariant", "FGuid", "FGameplayTag"]],
+  ["Math", ["FVector", "FVector2D", "FVector4", "FRotator", "FQuat", "FTransform", "FIntPoint", "FIntVector", "FColor", "FLinearColor"]],
+] as const;
+const stand = "Salvage's own test fixture: small stand-in types with the same names and members as Unreal's, built with clang and stopped in LLDB on a Mac.";
+---
+<Page
+  title="Read Unreal types in the debugger"
+  compact
+  description="How salvage lldb makes Xcode and LLDB show Unreal Engine types as values, what it changes on your machine, and how to take it out."
+  dek="Out of the box, Xcode and LLDB show an FString as a pile of members and a TObjectPtr as a pointer to a pointer. salvage lldb install teaches them to show the values instead."
+>
+  <div class="prose wide">
+    <h2>Before and after</h2>
+    <Terminal
+      prompt="(lldb)"
+      command="frame variable greeting ship_ptr text tag"
+      output={before}
+      marks={false}
+      caption={`Without formatters. ${stand}`}
+    />
+    <Terminal
+      prompt="(lldb)"
+      command="frame variable greeting ship_ptr text tag position shared_crate"
+      output={after}
+      marks={false}
+      caption={`With Salvage's formatters loaded. ${stand}`}
+    />
+
+    <h2>Install it</h2>
+    <Terminal command="salvage lldb install" output={install} caption="Real output, run in an empty test home folder." />
+    <p>
+      Restart Xcode, or any LLDB session you have open, and the formatters load with it.
+      Running <code>salvage lldb install</code> again changes nothing. If the formatter script has changed since, it updates
+      the script.
+    </p>
+
+    <h2>What it changes</h2>
+    <p>Unlike <code>doctor</code> and <code>soundings</code>, this one does change your machine, in two places:</p>
+    <ul>
+      <li>
+        It writes the formatter script, <code>salvage_unreal.py</code>, to Salvage's data
+        folder: <code>~/Library/Application Support/Salvage/lldb/</code> on a Mac.
+      </li>
+      <li>
+        It adds one line that loads the script to <code>~/.lldbinit</code>, which LLDB reads, and
+        to <code>~/.lldbinit-Xcode</code> if you have one, since Xcode reads that instead. A comment above the line says
+        where it came from.
+      </li>
+    </ul>
+    <p>
+      Before it changes either file, it backs it up next to the original, as <code>.lldbinit.salvage-backup-</code> followed by a number. It never rewrites your own lines, and if your init file is a symlink, it edits the file the
+      link points to.
+    </p>
+
+    <h2>Take it out</h2>
+    <Terminal command="salvage lldb uninstall" output={uninstall} caption="Real output, from the same test home folder." />
+    <p>Uninstall removes the script and Salvage's lines, and backs the file up again first. Your own lines stay.</p>
+
+    <h2>What it covers</h2>
+    <dl class="covered">
+      {covered.map(([group, types]) => (
+        <div>
+          <dt>{group}</dt>
+          <dd>{types.map((t, i) => <><code>{t}</code>{i < types.length - 1 && " "}</>)}</dd>
+        </div>
+      ))}
+    </dl>
+    <p>
+      It works alongside the formatters that ship with the engine. Where both cover a type, whichever loads last
+      wins. <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> checks your init file and tells you which
+      formatters it loads, if any.
+    </p>
+
+    <h2>How it was written</h2>
+    <p>
+      The formatters were written from scratch for Salvage, from documented behavior and the names of each type's
+      members. They contain no code from the engine's formatters or headers. Each one looks members up by name and
+      falls back to LLDB's usual display if anything doesn't match, so an engine version with a different layout shows
+      raw values, not errors.
+    </p>
+    <p>
+      CI checks every formatter on macOS, against stand-in types with both the game and editor layouts
+      of <code>FName</code>.
+    </p>
+
+    <GetSalvage />
+  </div>
+</Page>
+<style>
+  .covered {
+    margin: var(--s-4) 0 0;
+  }
+  .covered > div {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding-block: var(--s-3);
+    border-top: 2px solid var(--rule);
+  }
+  .covered dt {
+    font-stretch: var(--stretch-sign);
+    font-weight: 750;
+  }
+  .covered dd {
+    margin: 0;
+    line-height: 2;
+  }
+  @media (max-width: 600px) {
+    .covered > div {
+      grid-template-columns: 1fr;
+      gap: var(--s-1);
+    }
+  }
+</style>

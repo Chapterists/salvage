@@ -25,7 +25,7 @@ const recent = (await logbookEntries()).slice(0, 3);
         <Bow />
       </div>
       <div class="below">
-        <p class="tagline hull">In the hold so far: Unreal Engine, lighter and better on a Mac.</p>
+        <p class="tagline hull">First in the hold: Unreal Engine, lighter on low-RAM machines and better on a Mac.</p>
         <p class="caption">Draft marks in gigabytes: a game that carries less memory rides higher. (An illustration, not a measurement.)</p>
       </div>
     </div>
@@ -96,7 +96,7 @@ const recent = (await logbookEntries()).slice(0, 3);
           we're up against.
         </p>
         <p class="now">
-          First tool: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
+          In the box: <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a> reads a memory capture
           and shows where the memory goes, and whether the run fits 8, 12 and 16 GB machines.
         </p>
       </div>
@@ -112,8 +112,8 @@ const recent = (await logbookEntries()).slice(0, 3);
           they belong there, not like they're putting up with it.
         </p>
         <p class="now">
-          First tool: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
-          the things that make Unreal slow or broken, and says how to fix each one.
+          In the box: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
+          the things that make Unreal slow or broken, and <a href="/charts/salvage-lldb/"><code>salvage lldb</code></a> makes Unreal types readable in Xcode and LLDB.
         </p>
       </div>
     </article>
@@ -151,14 +151,15 @@ const recent = (await logbookEntries()).slice(0, 3);
 
   <section class="deck wrap">
     <div>
-      <h2 class="hull">Two tools in the repo. No release yet.</h2>
+      <h2 class="hull">One tool in the box. No release yet.</h2>
       <p>
-        <code>salvage doctor</code> and <code>salvage soundings</code> are in the repository, and you
-        can <a href="/charts/salvage-doctor/#get-salvage">build them from source</a> today. There's nothing to download
+        The first tool is the <code>salvage</code> command, with three jobs so
+        far: <code>doctor</code>, <code>soundings</code> and <code>lldb</code>. You
+        can <a href="/charts/salvage-doctor/#get-salvage">build it from source</a> today. There's nothing to download
         yet.
       </p>
       <p>
-        Neither one saves memory by itself. Doctor finds what's wrong with a Mac's setup; soundings measures where a
+        None of it saves memory by itself. Doctor finds what's wrong with a Mac's setup, and soundings measures where a
         game's memory goes. They're how we'll find what to fix, and how we'll check the fixes. When a change does cut
         memory, it goes on the <a href="/manifest/">manifest</a> with its <a href="/soundings/">soundings</a>:
         before-and-after numbers on real machines.
@@ -236,10 +237,10 @@ const recent = (await logbookEntries()).slice(0, 3);
     margin: var(--s-5) 0 0;
   }
   .tagline {
-    font-size: var(--step-3);
+    font-size: var(--step-2);
     font-weight: 800;
     margin: 0;
-    max-width: 18ch;
+    max-width: 22ch;
   }
   .caption {
     font-family: var(--font-mono);

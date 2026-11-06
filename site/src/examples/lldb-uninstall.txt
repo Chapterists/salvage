@@ -1,0 +1,7 @@
+
+  ✓ Removed ~/Library/Application Support/Salvage/lldb/salvage_unreal.py
+  ✓ Removed Salvage's lines from ~/.lldbinit
+    backup: ~/.lldbinit.salvage-backup-1793997432-1
+
+  Restart LLDB or Xcode for it to take effect.
+

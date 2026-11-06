@@ -1,0 +1,8 @@
+
+  ✓ Wrote ~/Library/Application Support/Salvage/lldb/salvage_unreal.py
+  ✓ Added the import line to ~/.lldbinit
+    backup: ~/.lldbinit.salvage-backup-1793997432
+
+  Restart LLDB or Xcode to pick them up. FString, TSharedPtr, TObjectPtr, FText and
+  friends will show their values.
+

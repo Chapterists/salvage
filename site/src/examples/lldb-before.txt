@@ -1,0 +1,23 @@
+(FString) greeting = {
+  Data = {
+    AllocatorInstance = {...}
+    ArrayNum = 13
+    ArrayMax = 13
+  }
+}
+(TObjectPtr<AActor>) ship_ptr = {
+   = {
+    ObjectPtr = {...}
+    DebugPtr = 0x000000016fdfdb20 {...}
+  }
+}
+(FText) text = {
+  TextData = (Reference = 0x000000016fdfdad8)
+  Flags = 0
+}
+(FGameplayTag) tag = {
+  TagName = {
+    ComparisonIndex = {...}
+    Number = 0
+  }
+}

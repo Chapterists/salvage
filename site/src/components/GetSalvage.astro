@@ -1,7 +1,8 @@
 ---
 // How to get the salvage command. This is the one place on the site that says
 // how to install it: when there's a release, change it here (and in the
-// README's "Get it" section).
+// README's "Get it" section). Releases are per tool; this command's are
+// tagged cli-v*.
 ---
 <section class="get" aria-labelledby="get-salvage">
   <h2 id="get-salvage">Get it</h2>
@@ -14,6 +15,6 @@ cd salvage
 cargo install --locked --path crates/salvage</code></pre>
   <p>
     That puts <code>salvage</code> in <code>~/.cargo/bin</code>. To try it without installing, run it from the
-    repository with <code>cargo run -p salvage -- doctor</code>. To remove it, run <code>cargo uninstall salvage</code>.
+    repository with <code>cargo run -p salvage -- doctor</code>. To remove it, run <code>salvage lldb uninstall</code> if you installed the debugger formatters, then <code>cargo uninstall salvage</code>.
   </p>
 </section>

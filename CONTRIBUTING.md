@@ -1,6 +1,6 @@
 # Contributing to Salvage
 
-Thanks for helping. Salvage is early. Nothing has shipped yet, so the most useful contributions right now are measurements, bug reports from real machines, and small focused fixes.
+Thanks for helping. Salvage is early: one tool is in the repository and there's no release yet, so the most useful contributions right now are measurements, bug reports from real machines, and small focused fixes.
 
 Before anything else: **this repository is public.** Every file, commit message, branch name, pull request title and pull request description you push can be read by anyone, and it stays in the history even after you delete it. The rules below exist so nothing private ends up there by accident.
 

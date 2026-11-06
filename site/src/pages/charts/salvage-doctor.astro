@@ -81,7 +81,7 @@ const groups = [
     checks: [
       {
         name: "~/.lldbinit",
-        what: "Checks that ~/.lldbinit (or ~/.lldbinit-Xcode) loads Unreal's LLDB formatters, so FString, TArray and friends show up as values in the debugger instead of raw memory. Warns if the line is missing or points at a file that's gone, and prints the line to add.",
+        what: "Checks that ~/.lldbinit (or ~/.lldbinit-Xcode) loads formatters for Unreal types, Salvage's or the engine's own, so FString, TSharedPtr, TObjectPtr and friends show up as values in the debugger instead of raw memory. Warns if none are loaded or the line points at a file that's gone, and suggests salvage lldb install.",
         mac: true,
       },
     ],
@@ -114,7 +114,7 @@ salvage doctor --json</code></pre>
     <Terminal
       command="salvage doctor"
       output={doctor}
-      caption="Real output from one machine, November 2026. Ten checks pass and two are worth a look."
+      caption="Real output from one machine, November 2026. Nine checks pass and three are worth a look."
     />
     <p>Each line starts with a mark:</p>
     <dl class="marks">
