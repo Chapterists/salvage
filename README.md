@@ -57,6 +57,8 @@ cargo install --locked --path crates/salvage   # puts salvage in ~/.cargo/bin
 
 Or run it from the repository without installing: `cargo run -p salvage -- doctor`. To remove it: `cargo uninstall salvage`.
 
+Once there's a release, prebuilt binaries for macOS, Windows and Linux will be on the [Releases page](https://github.com/Chapterists/salvage/releases), with checksums. The macOS binary won't be signed at first; the release notes show how to clear the quarantine flag.
+
 ## Status
 
 Early. The two tools above are how we find what to fix and check the fixes; neither one cuts memory use by itself. When a change does, it will be listed here with before-and-after measurements on real machines.

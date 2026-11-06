@@ -1,0 +1,117 @@
+name: Release (shared steps)
+
+# The steps every tool's release shares: checksums, notes and publishing.
+# A tool's own workflow builds its files, uploads them as artifacts named
+# "<tool>-*", and calls this. Adding a tool means adding its build workflow
+# and its notes intro; nothing here changes.
+#
+# Publishing happens only for a pushed "<tag-prefix><version>" tag. Every
+# other run is a dry run that stops after uploading what it would publish.
+on:
+  workflow_call:
+    inputs:
+      tool:
+        description: Short name; artifacts to publish are named "<tool>-*"
+        required: true
+        type: string
+      tag-prefix:
+        description: Tag prefix for this tool's releases, such as "cli-v"
+        required: true
+        type: string
+      title:
+        description: Release title before the version, such as "salvage command"
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      notes-intro:
+        description: Markdown file that opens the notes; {{version}} is filled in
+        required: true
+        type: string
+      notes-paths:
+        description: Space-separated paths whose commits go in the notes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  assemble:
+    name: Checksums and notes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ inputs.tool }}-*
+          path: dist
+          merge-multiple: true
+
+      - name: Write checksums and notes
+        env:
+          TAG_PREFIX: ${{ inputs.tag-prefix }}
+          VERSION: ${{ inputs.version }}
+          NOTES_INTRO: ${{ inputs.notes-intro }}
+          NOTES_PATHS: ${{ inputs.notes-paths }}
+        run: |
+          ref=HEAD
+          if [ "$GITHUB_REF_TYPE" = tag ]; then ref="$GITHUB_REF_NAME"; fi
+          (cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+          # NOTES_PATHS is a list on purpose.
+          # shellcheck disable=SC2086
+          scripts/release/notes.sh "$NOTES_INTRO" "$TAG_PREFIX" "$VERSION" "$ref" $NOTES_PATHS > notes.md
+          {
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "## Release notes for $GITHUB_REF_NAME"
+            else
+              echo "## Dry run: nothing was published"
+              echo
+              echo "These are the notes a $TAG_PREFIX$VERSION release from this commit would get."
+            fi
+            echo
+            cat notes.md
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.tool }}-release
+          path: |
+            dist/*
+            notes.md
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish the release
+    needs: assemble
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, inputs.tag-prefix)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.tool }}-release
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ inputs.title }} ${{ inputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$TITLE" \
+            --notes-file notes.md

@@ -1,0 +1,137 @@
+name: Release salvage command
+
+# Releases the salvage command (crates/salvage). Pushing a cli-v<version> tag
+# builds it for macOS, Windows and Linux and publishes a GitHub Release titled
+# "salvage command <version>". Running this by hand, or from a pull request
+# that changes the release tooling, is a dry run: everything is built and
+# uploaded as workflow artifacts, and nothing is published.
+#
+# The shared steps (checksums, notes, publishing) live in release-publish.yml.
+on:
+  push:
+    tags: ['cli-v*']
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release-cli.yml
+      - .github/workflows/release-publish.yml
+      - scripts/release/**
+      - crates/salvage/build.rs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Version from Cargo.toml, matched against the tag
+        id: version
+        run: |
+          # Separate assignments, so a failed check fails the step.
+          version="$(scripts/release/cargo-version.sh)"
+          version="$(scripts/release/check-tag.sh cli-v "$version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: version
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: macos-universal
+            os: macos-latest
+            targets: aarch64-apple-darwin x86_64-apple-darwin
+          - name: windows-x86_64
+            os: windows-latest
+            targets: x86_64-pc-windows-msvc
+            # Static C runtime, so no Visual C++ redistributable is needed.
+            rustflags: -C target-feature=+crt-static
+          - name: linux-x86_64
+            os: ubuntu-latest
+            targets: x86_64-unknown-linux-musl
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      - name: Install musl tools
+        if: contains(matrix.targets, 'musl')
+        run: sudo apt-get update -q && sudo apt-get install -y -q musl-tools
+
+      - name: Build
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
+        run: |
+          for target in ${{ matrix.targets }}; do
+            rustup target add "$target"
+            cargo build --release --locked -p salvage --target "$target"
+          done
+
+      - name: Package
+        run: scripts/release/package-cli.sh "${{ matrix.name }}" "${{ needs.version.outputs.version }}" ${{ matrix.targets }}
+
+      - name: Smoke test
+        env:
+          NAME: ${{ matrix.name }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p smoke
+          cd smoke
+          archive="$(ls ../dist/salvage-*)"
+          case "$archive" in
+            *.zip) 7z x -y "$archive" > /dev/null ;;
+            *) tar -xzf "$archive" ;;
+          esac
+          bin="./salvage-$VERSION-$NAME/salvage"
+          "$bin" --version
+          "$bin" --version | grep -q "salvage $VERSION (${GITHUB_SHA:0:12})"
+          case "$NAME" in
+            linux-*) file "$bin" | tee /dev/stderr | grep -Eq "static(ally|-pie) linked" ;;
+          esac
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Release
+    needs: [version, build]
+    # The only job allowed to write; inside, only the publish job uses it,
+    # and only for a cli-v tag.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-publish.yml
+    with:
+      tool: cli
+      tag-prefix: cli-v
+      title: salvage command
+      version: ${{ needs.version.outputs.version }}
+      notes-intro: scripts/release/intros/cli.md
+      notes-paths: >-
+        crates Cargo.toml Cargo.lock scripts/release
+        .github/workflows/release-cli.yml .github/workflows/release-publish.yml

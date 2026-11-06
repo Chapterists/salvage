@@ -13,10 +13,17 @@ use salvage::project::Project;
 use salvage::soundings::{self, Sounding};
 use salvage::ui::{self, BAD, DIM, GOOD, paint};
 
-/// Get more out of the hardware you already have: Unreal Engine tools for
-/// lighter machines and macOS.
+/// `0.1.0 (1a2b3c4d5e6f)`: the crate version and the commit it was built from.
+const VERSION: &str = if env!("SALVAGE_COMMIT").is_empty() {
+    env!("CARGO_PKG_VERSION")
+} else {
+    concat!(env!("CARGO_PKG_VERSION"), " (", env!("SALVAGE_COMMIT"), ")")
+};
+
+/// Salvage: Chapterists' open-source toolbox, the tools we use to make our
+/// stories. First up: Unreal Engine on lighter machines and on macOS.
 #[derive(Parser)]
-#[command(name = "salvage", version, propagate_version = true)]
+#[command(name = "salvage", version = VERSION, propagate_version = true)]
 struct Cli {
     /// When to use color.
     #[arg(long, value_enum, global = true, default_value_t = Color::Auto)]
