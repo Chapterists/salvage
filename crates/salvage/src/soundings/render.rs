@@ -210,7 +210,16 @@ pub fn render_report(
     }
 
     let _ = writeln!(out);
-    let _ = writeln!(out, "  {}", verdict(&targets, &flags));
+    // Wrapped as plain text, then styled line by line, so color codes
+    // don't count toward the width.
+    let (text, style) = verdict(&targets, &flags);
+    for line in ui::wrap(&text, width.saturating_sub(2)) {
+        let line = match style {
+            Some(style) => paint(style, line),
+            None => line,
+        };
+        let _ = writeln!(out, "  {line}");
+    }
     let _ = writeln!(out);
     out
 }
@@ -413,10 +422,12 @@ fn target_state_text(target: &Target) -> String {
     }
 }
 
-fn verdict(targets: &[Target], flags: &[Flag]) -> String {
+/// The closing line, unstyled, with the style for the whole of it.
+fn verdict(targets: &[Target], flags: &[Flag]) -> (String, Option<anstyle::Style>) {
     if targets.is_empty() {
-        return "Capture with memreport or -llmcsv to get a draft; see docs/benchmark-recipe.md."
-            .to_string();
+        let text =
+            "Capture with memreport or -llmcsv to get a draft; see docs/benchmark-recipe.md.";
+        return (text.to_string(), None);
     }
     let Some(nearest) = targets
         .iter()
@@ -427,14 +438,12 @@ fn verdict(targets: &[Target], flags: &[Flag]) -> String {
             .iter()
             .min_by_key(|t| t.machine_gb)
             .expect("non-empty");
-        return paint(
-            GOOD,
-            format!(
-                "Rides under every target, with {} spare on {} GB.",
-                bytes(smallest.spare),
-                smallest.machine_gb
-            ),
+        let text = format!(
+            "Rides under every target, with {} spare on {} GB.",
+            bytes(smallest.spare),
+            smallest.machine_gb
         );
+        return (text, Some(GOOD));
     };
     let levers: Vec<String> = flags
         .iter()
@@ -446,11 +455,12 @@ fn verdict(targets: &[Target], flags: &[Flag]) -> String {
     } else {
         format!(" Biggest levers: {}.", levers.join(", "))
     };
-    format!(
+    let text = format!(
         "To ride under {} GB, trim {}.{start}",
         nearest.machine_gb,
-        paint(BOLD, bytes(nearest.trim))
-    )
+        bytes(nearest.trim)
+    );
+    (text, None)
 }
 
 fn delta_text(delta: i64) -> String {

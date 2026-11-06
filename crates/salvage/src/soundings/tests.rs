@@ -312,3 +312,33 @@ fn json_for_one_run_and_for_a_diff() {
     assert!(json["draft_delta"].as_i64().unwrap() < 0);
     assert_eq!(json["changes"][0]["view"], "totals");
 }
+
+#[test]
+fn the_verdict_wraps_to_the_terminal_width() {
+    let run = parse("harbor-before.memreport", BEFORE);
+    let text = strip(&render_report(&run, &DEFAULT_TARGETS_GB, 25, 60, 10));
+    let lines: Vec<&str> = text.lines().collect();
+    let start = lines
+        .iter()
+        .position(|l| l.contains("To ride under 12 GB"))
+        .expect("verdict shown");
+    let verdict: Vec<&str> = lines[start..]
+        .iter()
+        .take_while(|l| !l.is_empty())
+        .copied()
+        .collect();
+    assert!(verdict.len() > 1, "long verdict wraps: {verdict:?}");
+    for line in &verdict {
+        assert!(line.chars().count() <= 60, "too wide: {line:?}");
+        assert!(line.starts_with("  "), "keeps its indent: {line:?}");
+    }
+    let joined = verdict
+        .iter()
+        .map(|l| l.trim())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert_eq!(
+        joined,
+        "To ride under 12 GB, trim 1.1 GB. Biggest levers: Textures in memory (1.8 GB), Render target pool (1.2 GB)."
+    );
+}
