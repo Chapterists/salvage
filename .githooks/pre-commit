@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Blocks commits that would leak secrets or internal material into this public repo.
+# Enable once per clone:  git config core.hooksPath .githooks
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+
+"$root/scripts/check-public-safety.sh" --staged
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is required to scan for secrets (brew install gitleaks)." >&2
+  exit 1
+fi
+gitleaks git --pre-commit --staged --redact --no-banner "$root"

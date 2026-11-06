@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Commit messages are public: they must be plain human-readable descriptions,
+# with no internal issue IDs, Linear links, or secrets.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+msg_file="$1"
+
+"$root/scripts/check-public-safety.sh" --message "$msg_file"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks stdin --redact --no-banner < "$msg_file" >/dev/null 2>&1 || {
+    echo "commit-msg: gitleaks found a possible secret in the commit message." >&2
+    exit 1
+  }
+fi
