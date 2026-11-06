@@ -76,7 +76,7 @@ a:hover {
   text-wrap: balance;
 }
 
-/* Small painted labels: section markers, statuses. */
+/* Small painted labels. Used sparingly: logbook dates. */
 .stencil {
   font-family: var(--font-mono);
   font-size: 0.75rem;

@@ -1,0 +1,101 @@
+<!doctype html>
+<!--
+  Source for social-preview.png (1280 x 640), the image GitHub and link
+  previews show for Salvage. It uses the site's self-hosted fonts.
+
+  To re-render, open this file in a browser with a 1280 x 640 viewport and take
+  a screenshot, or with Playwright:
+
+    page.setViewportSize({ width: 1280, height: 640 });
+    page.goto("file://<repo>/assets/brand/social-preview.html");
+    page.screenshot({ path: "assets/brand/social-preview.png" });
+
+  Then copy the PNG to site/public/social-preview.png.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Salvage social preview</title>
+<style>
+  @font-face {
+    font-family: "Archivo";
+    font-weight: 100 900;
+    font-stretch: 62% 125%;
+    src: url("../../site/public/fonts/archivo/archivo-latin-standard-normal.woff2") format("woff2-variations");
+  }
+  @font-face {
+    font-family: "Martian Mono";
+    font-weight: 100 800;
+    font-stretch: 75% 112.5%;
+    src: url("../../site/public/fonts/martian-mono/martian-mono-latin-standard-normal.woff2") format("woff2-variations");
+  }
+  html, body {
+    margin: 0;
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+    background: #0a1630;
+  }
+  .art {
+    position: absolute;
+    inset: 0;
+  }
+  .lockup {
+    position: absolute;
+    left: 80px;
+    top: 70px;
+    width: 470px;
+  }
+  h1 {
+    position: absolute;
+    left: 80px;
+    top: 196px;
+    width: 1000px;
+    margin: 0;
+    font-family: "Archivo", sans-serif;
+    font-stretch: 125%;
+    font-weight: 850;
+    font-size: 80px;
+    text-wrap: balance;
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+    color: #f4f1ea;
+  }
+  .foot {
+    position: absolute;
+    left: 80px;
+    bottom: 50px;
+    margin: 0;
+    font-family: "Martian Mono", monospace;
+    font-weight: 500;
+    font-size: 20px;
+    color: #3ed6c1;
+  }
+</style>
+</head>
+<body>
+  <svg class="art" viewBox="0 0 1280 640" width="1280" height="640" aria-hidden="true">
+    <!-- the lifebuoy, half in the water -->
+    <g transform="translate(1080 480) rotate(-8)">
+      <circle r="46.5" fill="none" stroke="#FF5A1F" stroke-width="31" />
+      <g fill="#F4F1EA">
+        <path d="M54.74 29.11A62 62 0 0 1 29.11 54.74L14.55 27.37A31 31 0 0 0 27.37 14.55Z" />
+        <path d="M-29.11 54.74A62 62 0 0 1 -54.74 29.11L-27.37 14.55A31 31 0 0 0 -14.55 27.37Z" />
+        <path d="M-54.74 -29.11A62 62 0 0 1 -29.11 -54.74L-14.55 -27.37A31 31 0 0 0 -27.37 -14.55Z" />
+        <path d="M29.11 -54.74A62 62 0 0 1 54.74 -29.11L27.37 -14.55A31 31 0 0 0 14.55 -27.37Z" />
+      </g>
+    </g>
+    <!-- the sea, below an angled waterline -->
+    <path d="M0 532 L1280 500 L1280 640 L0 640 Z" fill="#061024" />
+    <path d="M0 532 L1280 500" stroke="#C2362B" stroke-width="5" />
+    <g fill="#F4F1EA" opacity="0.35">
+      <rect x="990" y="528" width="44" height="5" rx="2.5" />
+      <rect x="1150" y="522" width="30" height="5" rx="2.5" />
+      <rect x="1060" y="548" width="56" height="5" rx="2.5" />
+    </g>
+  </svg>
+  <img class="lockup" src="salvage-lockup-dark.svg" alt="">
+  <h1>Your machine has more in it than you think.</h1>
+  <p class="foot">github.com/Chapterists/salvage</p>
+</body>
+</html>

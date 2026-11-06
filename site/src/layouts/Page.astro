@@ -5,16 +5,14 @@ import Waterline from "../components/Waterline.astro";
 
 interface Props {
   title: string;
-  label: string;
   dek?: string;
   description?: string;
 }
-const { title, label, dek, description } = Astro.props;
+const { title, dek, description } = Astro.props;
 ---
 <Base title={title} description={description ?? dek}>
   <section class="band">
     <div class="wrap">
-      <p class="stencil label">{label}</p>
       <h1 class="hull">{title}</h1>
       {dek && <p class="dek">{dek}</p>}
     </div>
@@ -29,10 +27,6 @@ const { title, label, dek, description } = Astro.props;
     background: var(--night-sea);
     color: var(--foam);
     padding-block: var(--s-7) var(--s-4);
-  }
-  .label {
-    color: var(--crane-yellow);
-    margin: 0 0 var(--s-3);
   }
   h1 {
     font-size: var(--step-5);

@@ -1,6 +1,7 @@
 ---
 // Workstream icon for Unreal on Mac: a ship in drydock under a crane, out of
-// the water where the work is easy to reach.
+// the water where the work is easy to reach. Hover the workstream and the crane
+// lowers its hook.
 interface Props { class?: string; }
 const { class: className } = Astro.props;
 ---
@@ -30,7 +31,23 @@ const { class: className } = Astro.props;
       <rect x="6" y="14" width="86" height="7" />
       <path d="M14 21 L34 21 L14 41 Z" />
     </g>
-    <rect x="77" y="21" width="2" height="18" fill="#f4f1ea" />
-    <rect x="72" y="38" width="12" height="7" rx="1.5" fill="#ffc83d" />
+    <rect class="cable" x="77" y="21" width="2" height="18" fill="#f4f1ea" />
+    <rect class="hook" x="72" y="38" width="12" height="7" rx="1.5" fill="#ffc83d" />
   </g>
 </svg>
+<style>
+  .cable,
+  .hook {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cable {
+    transform-box: fill-box;
+    transform-origin: top;
+  }
+  :global(.stream:hover) .cable {
+    transform: scaleY(1.45);
+  }
+  :global(.stream:hover) .hook {
+    transform: translateY(8px);
+  }
+</style>
