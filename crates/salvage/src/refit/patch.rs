@@ -17,6 +17,9 @@ use crate::fsutil::{back_up, write_atomically};
 
 pub const RECORD: &str = ".salvage-refit.json";
 
+/// The file BuildPlugin adds to a plugin that has none.
+const FILTER_FILE: &str = "Config/FilterPlugin.ini";
+
 /// What `patch` did, or would do.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Patched {
@@ -233,6 +236,11 @@ pub fn undo(plugin_dir: &Path) -> Result<Undone, String> {
     let changed: Vec<String> = now
         .iter()
         .filter(|entry| !record.copied_files.contains(entry))
+        // BuildPlugin writes a default filter file into the plugin when there
+        // isn't one; that's build output too.
+        .filter(|(path, _)| {
+            path != FILTER_FILE || record.copied_files.iter().any(|(p, _)| p == FILTER_FILE)
+        })
         .map(|(path, _)| path.clone())
         .chain(
             record

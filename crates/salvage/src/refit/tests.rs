@@ -437,6 +437,7 @@ fn a_plugin_outside_the_project_is_copied_and_the_original_left_alone() {
 
     // Build output alone doesn't count as a change: undo removes the copy.
     write(&copy.join("Binaries/Mac/libUnrealEditor-Sail.dylib"), "");
+    write(&copy.join("Config/FilterPlugin.ini"), "[FilterPlugin]\n");
     assert_eq!(patch::undo(&copy).unwrap(), Undone::RemovedCopy);
     assert!(!copy.exists());
 }
