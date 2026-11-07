@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FGenericCrashContext>
+	<RuntimeProperties>
+		<CrashVersion>3</CrashVersion>
+		<ExecutionGuid>00000000000000000000000000000000</ExecutionGuid>
+		<CrashGUID>UECC-Mac-00000000000000000000000000000000_0000</CrashGUID>
+		<IsEnsure>false</IsEnsure>
+		<IsAssert>true</IsAssert>
+		<CrashType>Assert</CrashType>
+		<ErrorMessage>Assertion failed: Hull != nullptr [File:Harbor.cpp] [Line: 25]</ErrorMessage>
+		<GameName>UE-Harbor</GameName>
+		<ExecutableName>UnrealEditor</ExecutableName>
+		<BuildConfiguration>Development</BuildConfiguration>
+		<EngineVersion>5.8.4-00000000+++UE5+Release-5.8</EngineVersion>
+		<TimeOfCrash>639296069869620000</TimeOfCrash>
+		<CallStack>0x06001200 libUnrealEditor-Core.dylib!FDebug::CheckVerifyFailedImpl2(char const*) [UnknownFile]) 
+
+0x06002400 libUnrealEditor-Core.dylib!FConsoleCommand::Execute() [UnknownFile]) 
+</CallStack>
+		<PCallStack>
+
+libUnrealEditor-Core 0x0000000106000000 + 1200 
+Unknown 0x0000000000000000 + d4b01a00 
+Unknown 0x0000000000000000 + d4b02b00 
+libUnrealEditor-Core 0x0000000106000000 + 2400 
+</PCallStack>
+	</RuntimeProperties>
+</FGenericCrashContext>

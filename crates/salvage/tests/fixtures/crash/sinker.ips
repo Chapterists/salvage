@@ -1,0 +1,14 @@
+{"app_name":"sinker","timestamp":"2026-01-02 03:04:05.00 -0500","app_version":"","slice_uuid":"dddddddd-dddd-dddd-dddd-dddddddddd01","build_version":"","platform":1,"share_with_app_devs":0,"is_first_party":1,"bug_type":"309","os_version":"macOS 99.1 (99A123)","roots_installed":0,"name":"sinker","incident_id":"11111111-2222-3333-4444-555555555555"}
+{
+  "procName" : "sinker",
+  "procPath" : "\/private\/tmp\/*\/sinker",
+  "captureTime" : "2026-01-02 03:04:05.1234 -0500",
+  "exception" : {"codes":"0x0000000000000001, 0x0000000000000000","rawCodes":[1,0],"type":"EXC_BAD_ACCESS","signal":"SIGSEGV","subtype":"KERN_INVALID_ADDRESS at 0x0000000000000000"},
+  "faultingThread" : 0,
+  "threads" : [{"triggered":true,"id":1,"queue":"com.apple.main-thread","frames":[{"imageOffset":16128,"imageIndex":0},{"imageOffset":16148,"imageIndex":0},{"imageOffset":16200,"imageIndex":0},{"imageOffset":27544,"symbol":"start","symbolLocation":6400,"imageIndex":1}]},{"id":2,"frames":[{"imageOffset":4096,"symbol":"__workq_kernreturn","symbolLocation":8,"imageIndex":2}]}],
+  "usedImages" : [
+  {"source":"P","arch":"arm64","base":4297031680,"size":16384,"uuid":"dddddddd-dddd-dddd-dddd-dddddddddd01","path":"\/private\/tmp\/*\/sinker","name":"sinker"},
+  {"source":"P","arch":"arm64e","base":6540029952,"size":785540,"uuid":"dddddddd-dddd-dddd-dddd-dddddddddd02","path":"\/usr\/lib\/dyld","name":"dyld"},
+  {"source":"P","arch":"arm64e","base":6000000000,"size":65536,"uuid":"dddddddd-dddd-dddd-dddd-dddddddddd03","path":"\/usr\/lib\/system\/libsystem_kernel.dylib","name":"libsystem_kernel.dylib"}
+]
+}
