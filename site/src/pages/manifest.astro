@@ -43,9 +43,28 @@ const tools: Tool[] = [
       {
         name: "salvage doctor",
         workstream: "Unreal on Mac",
-        what: "Runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific.",
+        what: "Runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range and Epic's documented versions, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific.",
         changes: "Nothing. It reads your setup and prints fixes for you to run.",
         chart: { href: "/charts/salvage-doctor/", title: "Check a Mac for Unreal" },
+      },
+      {
+        name: "salvage xcode",
+        workstream: "Unreal on Mac",
+        what: "Finds every installed Xcode and judges each against the engine you build with, using two sources: the range the engine's own Apple_SDK.json accepts, read from your install, and Epic's macOS requirements page, which is narrower and names versions that don't work. Checks each Xcode's Metal Toolchain and tools, and prints the DEVELOPER_DIR to pin the right one per build. When none is right, it prints the xcodes command to install the one Epic recommends.",
+        changes: "Nothing. It never installs Xcode, runs sudo or changes xcode-select. With --wrapper it writes one small script that pins the picked Xcode for whatever command you run through it.",
+        chart: { href: "/charts/salvage-xcode/", title: "Pick the right Xcode for Unreal on a Mac" },
+        others: [
+          {
+            name: "xcodes",
+            href: "https://github.com/XcodesOrg/xcodes",
+            note: "installs and switches Xcode versions from the command line; salvage xcode hands off to it",
+          },
+          {
+            name: "XcodesApp",
+            href: "https://github.com/XcodesOrg/XcodesApp",
+            note: "the same as a Mac app",
+          },
+        ],
       },
       {
         name: "salvage soundings",
@@ -129,7 +148,7 @@ const tools: Tool[] = [
 ---
 <Page
   title="Manifest"
-  dek="Everything in the toolbox: what each tool does, where it runs, and what it changes. One tool so far, the salvage command, with six jobs. It has no release yet."
+  dek="Everything in the toolbox: what each tool does, where it runs, and what it changes. One tool so far, the salvage command, with seven jobs. It has no release yet."
 >
   <ol class="manifest">
     {tools.map((t) => (

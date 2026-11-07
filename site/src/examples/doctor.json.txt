@@ -31,7 +31,9 @@
       "status": "pass",
       "summary": "Xcode 27.2 (27B52), within the engine's range (15.2.0 to 27.9.0)",
       "details": [
-        "Epic builds this engine with Xcode 26.1.1."
+        "Epic recommends Xcode 26.1.1 for Unreal Engine 5.8; this one is newer than that.",
+        "Epic builds this engine with Xcode 26.1.1.",
+        "`salvage xcode` lists every installed Xcode and how to pin one per build."
       ]
     },
     {

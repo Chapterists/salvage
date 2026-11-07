@@ -22,13 +22,17 @@
   Xcode and Metal
     ✓  Xcode               Xcode 27.2 (27B52), within the engine's range (15.2.0
                            to 27.9.0)
+                           Epic recommends Xcode 26.1.1 for Unreal Engine 5.8;
+                           this one is newer than that.
                            Epic builds this engine with Xcode 26.1.1.
+                           `salvage xcode` lists every installed Xcode and how
+                           to pin one per build.
     ✓  xcode-select        /Applications/Xcode.app/Contents/Developer
     ✓  Metal Toolchain     Apple metal version 32023.922 (metalfe-32023.922.4)
     ✓  Rosetta             Installed
 
   Disk
-    ✓  Free space          106 GB free for the engine, home and caches
+    ✓  Free space          103 GB free for the engine, home and caches
     ✓  Spaces in paths     Only the engine path has spaces, and Epic's tools
                            cope with that
                            /Users/Shared/Epic Games/UE_5.8 is the Launcher
@@ -42,7 +46,7 @@
     ✓  RAM                 16 GB
                            Below Epic's recommended 32 GB. Salvage is built for
                            machines like this one.
-    !  Swap                9 GB in use, so the system is paging to disk
+    !  Swap                9.5 GB in use, so the system is paging to disk
                            Everything slows down when the editor's working set
                            lands in swap.
                            → Quit apps you aren't using (Activity Monitor's

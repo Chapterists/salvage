@@ -1,0 +1,264 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import output from "../../examples/xcode.txt?raw";
+import wrapper from "../../examples/xcode-wrapper.sh.txt?raw";
+
+const EPIC_REQS =
+  "https://dev.epicgames.com/documentation/en-us/unreal-engine/macos-development-requirements-for-unreal-engine";
+const XCODES = "https://github.com/XcodesOrg/xcodes";
+const XCODES_APP = "https://github.com/XcodesOrg/XcodesApp";
+const captured = "Real output on an Apple M4 Mac with Xcode 27.2 and Unreal Engine 5.8.4.";
+
+// The verdicts, from crates/salvage/src/xcode/mod.rs.
+const verdicts: [string, string, string][] = [
+  ["Recommended", "The version Epic recommends for this engine.", "Pick it."],
+  ["Supported", "Inside the engine's range and at or above Epic's minimum.", "Fine to use."],
+  ["Newer than Epic recommends", "Inside the engine's range, but newer than the version Epic recommends.", "Fine to use. Salvage still suggests the recommended one."],
+  ["Below Epic's minimum", "The engine's range accepts it, but Epic lists a higher minimum.", "Doctor warns. Don't pick it."],
+  ["Not compatible", "The engine's range accepts it, but Epic's page says it doesn't work.", "Doctor warns. Don't pick it."],
+  ["Outside the engine's range", "The engine's own build check rejects it.", "Doctor fails. Builds stop."],
+];
+
+// Epic's table, as salvage keeps it (crates/salvage/src/xcode/epic.rs).
+const epic: [string, string, string, string][] = [
+  ["5.8", "26.0", "26.1.1", "26.4"],
+  ["5.6 to 5.7", "15.2", "15.4 or newer", ""],
+  ["5.5", "15.2", "15.4 or newer", ""],
+  ["5.4", "14.1", "Latest Xcode 14", ""],
+  ["5.2 to 5.3", "14.1", "Latest Xcode 14", ""],
+  ["5.1", "13.4.1", "Latest Xcode 14", ""],
+  ["5.0", "12.4", "Latest Xcode 13", ""],
+];
+---
+<Page
+  title="Pick the right Xcode for Unreal on a Mac"
+  compact
+  description="How to use salvage xcode to judge every installed Xcode against your Unreal Engine version and Epic's own guidance, check its Metal tools, and pin the right one per build with DEVELOPER_DIR, without sudo or xcode-select."
+  dek="An Xcode update can break Unreal builds without warning, and the engine accepts versions Epic says don't work. salvage xcode judges every Xcode you have against your engine and Epic's guidance, and pins the right one per build, without sudo."
+>
+  <div class="prose wide">
+    <h2>The problem</h2>
+    <p>
+      Unreal on a Mac builds with whichever Xcode the system points at, usually <code>/Applications/Xcode.app</code>.
+      When that Xcode updates, from the App Store or by hand, the next build uses the new one. Nothing asks whether
+      your engine is ready for it.
+    </p>
+    <p>
+      The engine does check. Each release carries an <code>Apple_SDK.json</code> with the range of Xcode versions its
+      build accepts, and for Unreal Engine 5.8.4 that's Xcode 15.2 to 27.9. Epic's <a href={EPIC_REQS}>macOS Development Requirements</a> page is narrower. For 5.8 it gives Xcode 26.0 as the minimum and
+      26.1.1 as recommended, and says "Xcode 26.4 is not compatible with Unreal Engine." So the engine's own check
+      will pass an Xcode that Epic says doesn't work.
+    </p>
+    <p>
+      There's a second catch. Since Xcode 26, the Metal compiler is a separate download, about 1 GB, and without it
+      the engine can't compile shaders. A newly installed Xcode may not have it yet.
+    </p>
+
+    <h2>What you need</h2>
+    <ul>
+      <li><strong>A Mac with at least one Xcode installed.</strong></li>
+      <li>
+        <strong>Unreal Engine.</strong> Run it in a project's folder to use that project's engine, or pass <code>--engine</code>. Without either, it uses the newest engine installed.
+      </li>
+      <li><strong>The <code>salvage</code> command.</strong> See <a href="#get-salvage">Get it</a> below.</li>
+    </ul>
+
+    <h2>1. See where you stand</h2>
+    <Terminal command="salvage xcode" output={output} caption={captured} />
+    <p>From the top:</p>
+    <ul>
+      <li>
+        <strong>The two sources.</strong> The range the engine's build check accepts, read from your install, and the
+        version Epic builds the engine with. Then Epic's guidance for that engine, with the page and the date Salvage's
+        copy of it was checked.
+      </li>
+      <li>
+        <strong>Every installed Xcode.</strong> Salvage finds them with Spotlight, in <code>/Applications</code> and <code>~/Applications</code>, in xcodes' list if you use it, and wherever xcode-select or <code>DEVELOPER_DIR</code> points. Each gets a verdict and the reason for it. This Mac has one Xcode, 27.2,
+        which the engine accepts but which is newer than Epic recommends, so it's marked <code>~</code>. It's still
+        the pick, because it's the best one installed.
+      </li>
+      <li>
+        <strong>The Metal tools.</strong> For each Xcode, Salvage checks that the Metal Toolchain is installed and that <code>xcrun</code> can find <code>metal</code>, <code>metallib</code>, <code>metal-ar</code> and <code>metal-pack</code>,
+        the tools the engine's shader compiler runs. If one is missing, it says so under that Xcode, with the command
+        to download the toolchain for it. Here nothing was missing, so there's no line about it.
+      </li>
+      <li><strong>What builds use now</strong>, and how to pin the pick. More on that below.</li>
+      <li>
+        <strong>What to install.</strong> When no installed Xcode is the one Epic recommends, it prints the <code>xcodes install</code> command for it.
+      </li>
+    </ul>
+
+    <h3>The verdicts</h3>
+    <div class="table-scroll">
+      <table class="grid">
+        <thead><tr><th scope="col">Verdict</th><th scope="col">Means</th><th scope="col">So</th></tr></thead>
+        <tbody>
+          {verdicts.map(([v, means, so]) => <tr><td><strong>{v}</strong></td><td>{means}</td><td>{so}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> judges the active Xcode by the same rules, and
+      points here.
+    </p>
+
+    <h3>Epic's table, as Salvage keeps it</h3>
+    <p>
+      Epic's page isn't something a program can read reliably, so Salvage keeps what it says as a small table, quoted
+      with the date it was checked: 6 November 2026. If Epic changes the page, Salvage needs an update, and until then
+      the engine's own range is still read live from your install.
+    </p>
+    <div class="table-scroll">
+      <table class="grid narrow">
+        <thead><tr><th scope="col">Unreal Engine</th><th scope="col">Minimum Xcode</th><th scope="col">Recommended</th><th scope="col">Not compatible</th></tr></thead>
+        <tbody>
+          {epic.map(([ue, min, rec, bad]) => <tr><td>{ue}</td><td>{min}</td><td>{rec}</td><td>{bad || "None"}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>2. Pin it per build</h2>
+    <p>
+      The usual advice is <code>sudo xcode-select --switch</code>. That changes the Xcode for the whole Mac: every
+      project, every user, every tool that calls <code>xcrun</code>. It needs an administrator password, and it's easy
+      to forget you did it.
+    </p>
+    <p>
+      There's a narrower way. Apple's tools read <code>DEVELOPER_DIR</code> first, and only fall back to
+      xcode-select when it isn't set. Set it in one shell, or for one command, and only those builds use that Xcode.
+      Salvage prints both forms for the pick:
+    </p>
+    <pre><code>export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"</code></pre>
+    <p>
+      Start the editor from that shell too. Apps opened from the Finder, the Dock or the Epic Games Launcher don't
+      see a shell's variables.
+    </p>
+    <p>
+      For scripts and build machines, <code>--wrapper</code> writes a small script that sets <code>DEVELOPER_DIR</code> and runs whatever you give it:
+    </p>
+    <pre><code>salvage xcode --wrapper ./ue-xcode
+./ue-xcode "/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun ...</code></pre>
+    <Terminal command="cat ue-xcode" output={wrapper} marks={false} caption={captured} />
+    <p>
+      That's the whole script. Delete it when you're done with it. If no installed Xcode is good enough to pin,
+      Salvage doesn't write one.
+    </p>
+
+    <h2>3. Get the right Xcode</h2>
+    <p>
+      Salvage doesn't install Xcode. Other people have already built that well, so it hands off to them:
+    </p>
+    <ul>
+      <li>
+        <a href={XCODES}><strong>xcodes</strong></a> is a command-line tool, under the MIT license, that downloads,
+        installs, lists and switches between versions of Xcode, many side by side. It needs your Apple ID to download.
+        Install it with Homebrew, then run the command Salvage printed:
+        <pre><code>brew install xcodesorg/made/xcodes
+xcodes install 26.1.1</code></pre>
+      </li>
+      <li>
+        <a href={XCODES_APP}><strong>XcodesApp</strong></a> does the same from a Mac app, also MIT licensed: pick a
+        version, click to install, click to make it active. It installs simulator runtimes too.
+      </li>
+    </ul>
+    <p>
+      xcodes installs into <code>/Applications</code> by default, with the version in the name, so it sits next to
+      your current Xcode instead of replacing it. Run <code>salvage xcode</code> again and it finds the new one.
+    </p>
+    <p>
+      If a new Xcode has no Metal Toolchain yet, download it for that Xcode alone, with the command Salvage prints
+      under it:
+    </p>
+    <pre><code>DEVELOPER_DIR=/Applications/Xcode-26.1.1.app/Contents/Developer xcodebuild -downloadComponent MetalToolchain</code></pre>
+    <p class="aside">That path is an example: use the one Salvage shows for the Xcode you installed.</p>
+
+    <h2>What xcodes does, and what Salvage does</h2>
+    <div class="table-scroll">
+      <table class="grid split">
+        <thead><tr><th scope="col"></th><th scope="col">xcodes and XcodesApp</th><th scope="col">salvage xcode</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Download and install Xcode</th><td>Yes</td><td>No. It prints the xcodes command.</td></tr>
+          <tr><th scope="row">Switch the Mac's Xcode</th><td>Yes, with xcode-select</td><td>No. It never runs sudo or changes xcode-select.</td></tr>
+          <tr><th scope="row">Know which Xcode an Unreal version wants</th><td>No</td><td>Yes: the engine's range and Epic's guidance</td></tr>
+          <tr><th scope="row">Check the Metal tools Unreal needs</th><td>No</td><td>Yes, for each Xcode</td></tr>
+          <tr><th scope="row">Pin an Xcode for one engine's builds</th><td>No</td><td>Yes, with DEVELOPER_DIR or a wrapper script</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      If you'd rather switch the whole Mac, that's what <code>xcodes select</code> and XcodesApp's button are for.
+    </p>
+
+    <h2>For scripts</h2>
+    <p>
+      <code>salvage xcode --json</code> prints the same report as JSON: the engine's range, Epic's guidance with its
+      source, every installed Xcode with its verdict and Metal checks, what builds use now, the pick, and the version
+      to install.
+    </p>
+
+    <h2>What it changes</h2>
+    <p>
+      Nothing, unless you pass <code>--wrapper</code>, which writes the one script you name. It reads Xcode's own
+      version and asks <code>xcrun</code> about each Xcode by setting <code>DEVELOPER_DIR</code> for that one call.
+    </p>
+
+    <h2>Where it's been tried</h2>
+    <ul>
+      <li>On an Apple M4 Mac with one Xcode, 27.2, and Unreal Engine 5.8.4. That's the output above.</li>
+      <li>
+        Several Xcodes side by side, Xcodes without the Metal Toolchain, and the other verdicts are covered by unit
+        tests, not yet by a real Mac with them installed.
+      </li>
+    </ul>
+    <p>
+      If you have several Xcodes installed, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> with
+      what it printed would help.
+    </p>
+
+    <GetSalvage />
+  </div>
+</Page>
+<style>
+  .table-scroll {
+    overflow-x: auto;
+    margin-block: var(--s-5);
+  }
+  .grid {
+    width: 100%;
+    min-width: 34rem;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+  .grid.narrow {
+    min-width: 0;
+    max-width: 40rem;
+  }
+  .grid th,
+  .grid td {
+    text-align: left;
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .grid thead th {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    border-bottom: 2px solid var(--text);
+  }
+  .grid tbody th {
+    font-weight: 700;
+  }
+  .split td:last-child {
+    font-weight: 600;
+  }
+  .aside {
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  /* Keep flags such as --engine whole instead of breaking at the hyphens. */
+  .prose :not(pre) > code {
+    white-space: nowrap;
+  }
+</style>
