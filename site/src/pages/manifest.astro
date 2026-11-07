@@ -79,6 +79,18 @@ const tools: Tool[] = [
         },
       },
       {
+        name: "salvage refit",
+        workstream: "Unreal on Mac",
+        what: "Rebuilds Windows-only Unreal plugins for Mac, where the source allows it. scan says why a plugin won't work on a Mac, with files and lines: allow lists, missing Mac binaries, Windows-only libraries or build rules, Windows API calls, no source. patch lets Mac through the allow lists on a copy in your project. build runs BuildPlugin for Mac and checks every module really came out as a Mac binary, since a plugin that leaves Mac out \"builds\" without compiling anything. check runs that check on its own. Porting code stays with a person.",
+        changes: "scan, build's check and check change nothing. patch copies a plugin into the project if it isn't there and edits only its .uplugin's platform lists, after backing it up; it never writes inside an engine install. build writes a package to Saved/Refit, and --install copies its Mac binaries into the plugin. salvage refit patch --undo puts the .uplugin back byte for byte, and removes a copy refit made if nothing but build output changed in it.",
+        chart: { href: "/charts/salvage-refit/", title: "Rebuild a Windows-only Unreal plugin for Mac" },
+        soundings: {
+          href: "/soundings/refit-ue58-mac/",
+          title: "salvage refit, on every plugin in Unreal Engine 5.8",
+          note: "of 894 engine plugins, 768 work on a Mac, 84 need a patch, a rebuild or both, and 42 need porting. Epic's PSDImporter, one of the 42, was rebuilt and imported a PSD in the Mac editor.",
+        },
+      },
+      {
         name: "salvage lldb",
         workstream: "Unreal on Mac",
         what: "Installs formatters that make Xcode and LLDB show Unreal types (FString, TObjectPtr, TSharedPtr, FText, FVector and more) as values instead of raw memory, and takes them out again.",
@@ -117,7 +129,7 @@ const tools: Tool[] = [
 ---
 <Page
   title="Manifest"
-  dek="Everything in the toolbox: what each tool does, where it runs, and what it changes. One tool so far, the salvage command, with five jobs. It has no release yet."
+  dek="Everything in the toolbox: what each tool does, where it runs, and what it changes. One tool so far, the salvage command, with six jobs. It has no release yet."
 >
   <ol class="manifest">
     {tools.map((t) => (

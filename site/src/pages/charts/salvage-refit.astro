@@ -1,0 +1,254 @@
+---
+import Page from "../../layouts/Page.astro";
+import Terminal from "../../components/Terminal.astro";
+import GetSalvage from "../../components/GetSalvage.astro";
+import PluginHold from "../../components/PluginHold.astro";
+import { REFIT_SOUNDING_HREF } from "../../lib/refit-sounding";
+import scanEngine from "../../examples/refit-scan-engine.txt?raw";
+import scanPsd from "../../examples/refit-scan-psd.txt?raw";
+import patch from "../../examples/refit-patch.txt?raw";
+import scanPatched from "../../examples/refit-scan-patched.txt?raw";
+import buildTrap from "../../examples/refit-build-trap.txt?raw";
+import buildOk from "../../examples/refit-doc-build.txt?raw";
+import undo from "../../examples/refit-undo.txt?raw";
+
+const captured =
+  "Real output on an Apple M4 Mac with Unreal Engine 5.8.4. The project path is shortened.";
+
+const verdicts: [string, string, string][] = [
+  ["works on Mac", "Mac binaries, and nothing in the way.", "Nothing to do."],
+  ["content only, works on Mac", "No code, only assets.", "Nothing to do."],
+  ["works on Mac without its Windows-only modules", "Its Windows-only modules are left out on a Mac, and the rest work.", "Nothing to do."],
+  ["allow list only: patch (Mac binaries are there)", "The Mac binaries ship, but the plugin's list of platforms leaves Mac out.", "patch"],
+  ["allow list only: patch, then rebuild", "Lists leave Mac out, there are no Mac binaries, and the scan found nothing else in the way.", "patch, then build"],
+  ["rebuild for Mac", "Nothing keeps Mac out, but there are no Mac binaries.", "build"],
+  ["needs porting", "Windows API calls, Windows-only libraries or Windows-only build rules.", "A person ports what's listed, then patch and build."],
+  ["no source: ask the vendor", "Only binaries. Without source there's nothing to rebuild.", "Ask the vendor for a Mac build or the source."],
+];
+---
+<Page
+  title="Rebuild a Windows-only Unreal plugin for Mac"
+  compact
+  description="Can you run Windows Unreal plugins on a Mac? Not as they are, but you can often rebuild them. How to use salvage refit to scan a plugin, patch its allow lists, build it for Mac and check that the build really produced Mac binaries."
+  dek="salvage refit tells you why a plugin won't work on a Mac, lets Mac through its allow lists on a copy in your project, builds it, and checks the build really made Mac binaries. Porting code stays with a person."
+>
+  <div class="prose wide">
+    <h2>Can I run a Windows plugin on my Mac?</h2>
+    <p class="lede">
+      Not as it is. You can often rebuild it.
+    </p>
+    <p>
+      A Windows plugin's binaries are <code>.dll</code> files: Windows' own format, built for Intel and AMD processors,
+      calling Windows' APIs. The Mac editor is a different kind of program, for Apple silicon (and Intel), on a
+      different operating system. There's no way to load one inside the other.
+    </p>
+    <p>
+      What you can do is build the plugin again, for Mac, from its source. Often the only thing in the way is a list in
+      the plugin that names the platforms it's for, and Mac isn't on it. Sometimes the code calls Windows directly, or
+      leans on a library that only comes for Windows, and then someone has to port it. Across all 894 plugins that ship
+      with Unreal Engine 5.8.4, here's how that split:
+    </p>
+  </div>
+
+  <PluginHold />
+
+  <div class="prose wide">
+    <h2>What you need</h2>
+    <ul>
+      <li>
+        <strong>A Mac set up to build Unreal C++:</strong> Xcode with the Metal Toolchain. <a
+        href="/charts/salvage-doctor/"><code>salvage doctor</code></a> checks both.
+      </li>
+      <li><strong>Unreal Engine.</strong> Refit has been tried with 5.8.4, Epic's binary build.</li>
+      <li>
+        <strong>The plugin's source.</strong> Its <code>Source</code> folder, not only its binaries. Refit says when a
+        plugin has none.
+      </li>
+      <li>
+        <strong>A project to put the rebuilt plugin in.</strong> A Blueprint project is fine. Refit never changes the
+        engine install, so it works on a copy there.
+      </li>
+      <li><strong>The <code>salvage</code> command.</strong> See <a href="#get-salvage">Get it</a> below.</li>
+    </ul>
+
+    <h2>1. Scan</h2>
+    <p>
+      In a project's folder, <code>salvage refit scan</code> checks every plugin in its <code>Plugins</code> folder.
+      Add <code>--engine-plugins</code> for the engine's own, including Fab plugins installed into the engine:
+    </p>
+    <Terminal command="salvage refit scan --engine-plugins" output={scanEngine} caption="Real output on an Apple M4 Mac with Unreal Engine 5.8.4, in 6.5 seconds. It goes on to list every plugin that doesn't simply work, 126 here." />
+    <p>
+      Give it one plugin's folder and it shows everything in that plugin's way, with files and lines. Here's Epic's
+      PSDImporter, which imports layered Photoshop files and ships for Windows only:
+    </p>
+    <Terminal command="salvage refit scan Engine/Plugins/Experimental/PSDImporter" output={scanPsd} caption={captured} />
+    <p>
+      <code>--details</code> shows that for every plugin in a bigger scan, <code>--all</code> lists the ones that already
+      work too, and <code>--json</code> prints it all for scripts.
+    </p>
+
+    <h3>What the verdicts mean</h3>
+    <div class="table-scroll">
+      <table class="verdicts">
+        <thead><tr><th scope="col">Verdict</th><th scope="col">Why</th><th scope="col">Next</th></tr></thead>
+        <tbody>
+          {verdicts.map(([v, why, next]) => (
+            <tr><td><code>{v}</code></td><td>{why}</td><td>{next}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      The scan reads the <code>.uplugin</code>, the Mac binaries, every <code>Build.cs</code>, prebuilt libraries, and
+      the C and C++ sources. In the sources it skips comments and strings, follows <code>#if</code> and its relatives,
+      and reports Windows headers, Win32 calls and Win32 types outside any Windows-only block. These are heuristics:
+      they catch the usual reasons a plugin won't build on a Mac, not every one. "Nothing else in the way" doesn't
+      promise the plugin is useful on a Mac, or that it builds without surprises.
+    </p>
+
+    <h2>2. Patch</h2>
+    <p>
+      <code>salvage refit patch</code> adds Mac to the plugin's <code>SupportedTargetPlatforms</code> and to each
+      module's <code>PlatformAllowList</code>. A plugin from outside the project, the engine for one, is copied into the
+      project's <code>Plugins</code> folder first:
+    </p>
+    <Terminal command="salvage refit patch &quot;/Users/Shared/Epic Games/UE_5.8/Engine/Plugins/Experimental/PSDImporter&quot;" output={patch} caption={captured} />
+    <p>
+      It changes only those lists, in place, keeping the file's layout, after backing up the <code>.uplugin</code>.
+      Run it again and it reports nothing to change. <code>--dry-run</code> shows what it would do first.
+    </p>
+    <p>
+      A patch doesn't make a plugin portable. PSDImporter still needs its library after one:
+    </p>
+    <Terminal command="salvage refit scan Plugins/PSDImporter" output={scanPatched} caption={captured} />
+
+    <h2>Porting, if it needs it</h2>
+    <p>
+      If the scan says <code>needs porting</code>, this is where a person takes over. Refit lists what's in the way and
+      where; building a third-party library for Mac, or changing code that calls Windows, is up to whoever does the
+      port. For PSDImporter that meant building its PSD library for Mac and fixing two crashes, one in the plugin and
+      one in the library. <a href={REFIT_SOUNDING_HREF}>The sounding</a> logs every step.
+    </p>
+
+    <h2>3. Build</h2>
+    <p>
+      <code>salvage refit build</code> runs Unreal's BuildPlugin for Mac, then checks the result. That check is the
+      point. A plugin whose lists leave Mac out "builds" on a Mac in under a second, prints <code>BUILD
+      SUCCESSFUL</code>, and compiles nothing. Here's the unpatched PSDImporter:
+    </p>
+    <Terminal command="salvage refit build ~/Projects/Refitted/Plugins/PSDImporter" output={buildTrap} caption={`${captured} The whole command took 0.75 seconds; BuildPlugin's own log said BUILD SUCCESSFUL.`} />
+    <p>
+      After the patch and the port, the same command took 2 minutes 37 seconds and compiled 124 files for Apple silicon
+      and Intel. The check confirms that every module the editor loads has a Mac binary, and that each one is a real
+      Mach-O file exporting Unreal's module marker:
+    </p>
+    <Terminal command="salvage refit build Plugins/PSDImporter --install" output={buildOk} caption="An excerpt from the sounding: the check at the end of the build." />
+    <p>
+      The package goes to <code>Saved/Refit/&lt;Plugin&gt;</code> in the project, or wherever <code>--out</code> says. <code>--install</code> copies the Mac binaries into the plugin's folder, so the project's editor loads them. <code>--engine</code> picks the engine to build with; by default it's the project's, then the newest installed.
+    </p>
+    <p class="note">
+      <strong>For now, give <code>build</code> the plugin's full path.</strong> With a relative path such as <code>Plugins/PSDImporter</code>, this version of refit doesn't find the project and stops with "the plugin isn't
+      in a project".
+    </p>
+
+    <h2>4. Check</h2>
+    <p>
+      <code>salvage refit check</code> runs the same check on a package that's already built, without building again.
+      Pass BuildPlugin's log with <code>--log</code> to also check that files were compiled and that it built for a
+      platform at all. It's useful for a package someone else built, or in a script:
+    </p>
+    <pre><code>salvage refit check Saved/Refit/PSDImporter --log Saved/Refit/PSDImporter.log</code></pre>
+    <p><code>build</code> and <code>check</code> take <code>--json</code> too.</p>
+
+    <h2>Undo it</h2>
+    <p>
+      <code>salvage refit patch --undo</code> puts the <code>.uplugin</code> back byte for byte. If refit made the copy
+      and nothing but build output changed in it, the copy goes too:
+    </p>
+    <Terminal command="salvage refit patch Plugins/PSDImporter --undo" output={undo} caption={captured} />
+
+    <h2>What refit doesn't do</h2>
+    <ul>
+      <li>
+        <strong>Port code.</strong> It tells you what's in the way and where. Building a library, replacing a Windows
+        call or fixing what breaks on a Mac is a person's job, and it can take a few tries: PSDImporter crashed twice
+        before it imported a file.
+      </li>
+      <li>
+        <strong>Run Windows binaries.</strong> Nothing does that for the Unreal editor. Without source, there's
+        nothing for refit to rebuild.
+      </li>
+      <li>
+        <strong>Prove a plugin works.</strong> A clean build means it compiled into real Mac binaries. Whether it loads,
+        and whether every feature behaves on a Mac, is something to try.
+      </li>
+      <li><strong>Change the engine install.</strong> Patches go on a copy in your project.</li>
+      <li>
+        <strong>Decide what you can share.</strong> A rebuilt plugin is still under its own license. Check it before
+        you pass the Mac binaries on.
+      </li>
+    </ul>
+
+    <h2>Where it's been tried</h2>
+    <ul>
+      <li>
+        On Unreal Engine 5.8.4 on an Apple M4 Mac: a scan of all 894 engine plugins, and PSDImporter rebuilt and
+        importing a PSD in the editor. <a href={REFIT_SOUNDING_HREF}>The sounding</a> has the details, and what wasn't
+        tried.
+      </li>
+      <li>
+        Not on Fab plugins. They show up in the engine scan when they're installed into the engine, but none were
+        installed on this Mac.
+      </li>
+    </ul>
+    <p>
+      If you rebuild a plugin with it, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> saying what
+      worked and what didn't would help the next person.
+    </p>
+
+    <GetSalvage />
+  </div>
+</Page>
+<style>
+  .lede {
+    font-size: var(--step-2);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    margin-block: var(--s-5);
+  }
+  .verdicts {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+  .verdicts th,
+  .verdicts td {
+    text-align: left;
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .verdicts thead th {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    border-bottom: 2px solid var(--text);
+  }
+  .verdicts td:first-child {
+    width: 34%;
+  }
+  .verdicts td:last-child {
+    width: 24%;
+  }
+  .note {
+    border-left: 4px solid var(--mark);
+    padding-left: var(--s-4);
+    font-size: var(--step--1);
+  }
+  .prose code {
+    overflow-wrap: anywhere;
+  }
+</style>

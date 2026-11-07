@@ -1,0 +1,6 @@
+  124 files compiled
+  ✓ PSDImporterEditor  Binaries/Mac/libUnrealEditor-PSDImporterEditor.dylib (x86_64, arm64)
+  ✓ PSDImporter  Binaries/Mac/libUnrealEditor-PSDImporter.dylib (x86_64, arm64)
+  ✓ PSDImporterCore  Binaries/Mac/libUnrealEditor-PSDImporterCore.dylib (x86_64, arm64)
+
+  Mac binaries for every module.

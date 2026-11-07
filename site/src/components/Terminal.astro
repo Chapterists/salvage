@@ -29,7 +29,7 @@ const paint = (line: string) => {
   let html = escape(line);
   if (!marks) return html;
   html = html
-    .replace(/^(\s+)(✓)(?=\s)/, '$1<span class="g ok">$2</span>')
+    .replace(/^(\s+)(✓|◐)(?=\s)/, '$1<span class="g ok">$2</span>')
     .replace(/^(\s+)(!)(?=\s)/, '$1<span class="g warn">$2</span>')
     .replace(/^(\s+)(✗)(?=\s)/, '$1<span class="g bad">$2</span>')
     .replace(/^(\s+)(–|·)(?=\s)/, '$1<span class="g dim">$2</span>')
@@ -39,7 +39,7 @@ const paint = (line: string) => {
     .replace(/[█▏▎▍▌▋▊▉]+/g, bar)
     .replace(/(−[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="ok">$1</span>')
     .replace(/(\+[\d.]+ (?:bytes|KB|MB|GB))/g, '<span class="bad">$1</span>')
-    .replace(/^(\s+)(salvage (?:doctor|soundings|trim))/, '$1<strong>$2</strong>');
+    .replace(/^(\s+)(salvage (?:doctor|soundings|trim|refit \w+))/, '$1<strong>$2</strong>');
   return html;
 };
 const body = output.replace(/^\n+|\s+$/g, "").split("\n").map(paint).join("\n");

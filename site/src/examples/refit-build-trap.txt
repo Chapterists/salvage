@@ -1,0 +1,9 @@
+
+  salvage refit build  PSDImporter with Unreal Engine 5.8.4
+  Building for Mac; this takes a few minutes. Log: ~/Projects/Refitted/Saved/Refit/PSDImporter.log
+
+  salvage refit check  ~/Projects/Refitted/Saved/Refit/PSDImporter
+  0 files compiled
+  ✗ the plugin's allow lists leave Mac out, so nothing was built for Mac (run salvage refit patch first)
+  ✗ BuildPlugin built for no target platform
+

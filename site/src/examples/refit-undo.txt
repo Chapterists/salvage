@@ -1,0 +1,3 @@
+
+  ✓ Removed Plugins/PSDImporter (Salvage's copy; nothing in it had changed).
+

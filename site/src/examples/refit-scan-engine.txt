@@ -1,0 +1,11 @@
+
+  salvage refit scan  894 plugins in /Users/Shared/Epic Games/UE_5.8/Engine/Plugins
+
+    ✓  721  works on Mac
+    ✓   28  content only, works on Mac
+    ◐   19  works on Mac without its Windows-only modules
+    ~    3  rebuild for Mac
+    ~    8  allow list only: patch (Mac binaries are there)
+    ~   73  allow list only: patch, then rebuild
+    ✗   42  needs porting
+

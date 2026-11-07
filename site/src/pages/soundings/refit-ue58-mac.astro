@@ -1,0 +1,400 @@
+---
+import Page from "../../layouts/Page.astro";
+import PluginHold from "../../components/PluginHold.astro";
+import Terminal from "../../components/Terminal.astro";
+import { verdicts, REFIT_SOUNDING_DOC } from "../../lib/refit-sounding";
+import scanPsd from "../../examples/refit-scan-psd.txt?raw";
+import buildTrap from "../../examples/refit-build-trap.txt?raw";
+import buildOk from "../../examples/refit-doc-build.txt?raw";
+import importLog from "../../examples/refit-doc-import-log.txt?raw";
+
+const PSD_SDK = "https://github.com/MolecularMatters/psd_sdk";
+
+// The salvage log: what happened to PSDImporter, in order. Each entry says
+// whether it was refit's work or a port step done by hand.
+type Entry = { mark: "ok" | "bad" | "hand"; title: string; by: string; body: string[] };
+const log: Entry[] = [
+  {
+    mark: "ok",
+    title: "Patched",
+    by: "salvage refit patch",
+    body: [
+      "Refit copied the plugin into a scratch Blueprint project's Plugins folder, leaving the engine's copy untouched, and added Mac to the plugin's SupportedTargetPlatforms and to each module's PlatformAllowList. Running it again changed nothing.",
+    ],
+  },
+  {
+    mark: "hand",
+    title: "Supplied the library",
+    by: "a port step, by hand",
+    body: [
+      "Epic's bundled psd_sdk headers match upstream commit 311b5c2 (October 2023) exactly, ignoring whitespace. The current upstream changes struct layouts for large-document support, so it would link but misbehave.",
+      "That commit built for macOS as a universal static library, arm64 and x86-64, with plain clang in seconds, at first from the sources its CMake file lists for Apple, including the Mac file reader, PsdNativeFile_Mac.mm (entry 07 says why that was swapped out). Psd.a went into the plugin's Mac library folder, and the Mac branch of PsdSDK.Build.cs, which already had the line for that path commented out with a TODO, got the line back. A rescan then said: rebuild for Mac.",
+    ],
+  },
+  {
+    mark: "ok",
+    title: "Built",
+    by: "salvage refit build --install",
+    body: [
+      "BuildPlugin ran for 2 minutes 37 seconds and compiled 124 files for Apple silicon and Intel. Refit checked the package and copied the binaries into the plugin.",
+    ],
+  },
+  {
+    mark: "ok",
+    title: "Loaded",
+    by: "the Mac editor",
+    body: [
+      "The Mac editor opened the project and loaded all three modules from the project plugin (LogModuleManager: InternalLoadLibrary: 'PSDImporterEditor' and the other two), along with the plugin's content.",
+    ],
+  },
+  {
+    mark: "bad",
+    title: "Imported a PSD: crash",
+    by: "std::range_error",
+    body: [
+      "Importing a two-layer test PSD, written for this test, through the plugin's factory aborted the editor with std::range_error: wstring_convert: to_bytes error.",
+      "psd_sdk's Mac file reader converts the path it's given from wchar_t, which is UTF-32 on a Mac, to UTF-8, and throws on bad input. PSDImporter hands it the path through Unreal's StringCast<wchar_t>, and on a Mac, where Unreal's characters are 16-bit and wchar_t is 32-bit, that doesn't come out as a clean, terminated UTF-32 string. On Windows both are 16-bit, so this never showed.",
+    ],
+  },
+  {
+    mark: "hand",
+    title: "Fixed the path",
+    by: "a port step, by hand",
+    body: [
+      "One call site in PSDImporterCore/Private/PSDFileImport.cpp: on Mac, build the path as a null-terminated UTF-32 std::wstring, joining UTF-16 surrogate pairs, before passing it to psd_sdk.",
+    ],
+  },
+  {
+    mark: "bad",
+    title: "Imported again: another crash",
+    by: "SIGBUS",
+    body: [
+      "This time the editor died with a SIGBUS on a Grand Central Dispatch worker thread. psd_sdk's 2023 Mac file reader keeps a block literal for each read in a plain allocated struct without copying it to the heap, then runs it later from a stack frame that's gone. That's a bug in psd_sdk's Mac code, not in Unreal or PSDImporter.",
+    ],
+  },
+  {
+    mark: "hand",
+    title: "Swapped the file reader",
+    by: "a port step, by hand",
+    body: [
+      "psd_sdk also has a POSIX file reader, PsdNativeFile_Linux.cpp, using open and POSIX asynchronous I/O, which macOS supports. Rebuilding Psd.a with that file and PsdStringUtil.cpp in place of the .mm, then running salvage refit build --install again, gave a clean package.",
+    ],
+  },
+  {
+    mark: "ok",
+    title: "Imported a PSD in the Mac editor",
+    by: "PSDImporter's factory",
+    body: [
+      "The plugin's factory imported the test PSD, 64 × 64 pixels with two layers, as a PSDDocument asset with one texture per layer, and the editor shut down cleanly.",
+    ],
+  },
+];
+const markText = { ok: "✓", bad: "✗", hand: "⚒" };
+---
+<Page
+  title="salvage refit, on every plugin in Unreal Engine 5.8"
+  compact
+  description="What salvage refit found scanning all 894 plugins in Unreal Engine 5.8.4 for Mac, and how Epic's Windows-only PSDImporter was rebuilt to import a PSD in the Mac editor: two crashes, the fixes, and what's left for a real port."
+  dek="The second sounding. A scan of all 894 plugins that ship with Unreal Engine 5.8.4, then Epic's Windows-only PSDImporter, taken from a build that compiled nothing to a layered PSD imported in the Mac editor. Two crashes on the way."
+>
+  <PluginHold link={false} />
+
+  <div class="prose wide">
+    <h2>Why rebuild, not run</h2>
+    <p>
+      A Windows plugin is a set of <code>.dll</code> files: Windows' PE format, built for x86-64 against Windows APIs.
+      The Mac editor is a Mach-O process for arm64 (and x86-64). There's no way to load one inside the other, so the
+      only route to a Mac is the plugin's source. <code>salvage refit</code> finds out how far that route goes for each
+      plugin.
+    </p>
+
+    <h2>The scan, row by row</h2>
+    <table class="verdicts">
+      <thead><tr><th scope="col">Verdict</th><th scope="col" class="num">Plugins</th></tr></thead>
+      <tbody>
+        {verdicts.map((v) => <tr class={v.group}><td>{v.label}</td><td class="num">{v.count}</td></tr>)}
+        <tr><td>No source</td><td class="num">0</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>
+        <strong>Patch, then rebuild (73).</strong> 61 of these list Win64 (some with Linux) and not Mac, and the scan
+        found nothing else in the way. Examples: AxFImporter, OpenImageDenoise, PlainProps, HairModelingToolset,
+        StaticMeshEditorModeling, Shotgrid, VirtualScouting, PSDImporterMaterialDesignerBridge. 8 are for phones and
+        headsets only (Android or iOS allow lists, such as the Google Play and Firebase plugins), and 4 for Linux only
+        (the CodeLite, KDevelop and null source code accessors, and the Linux device profile selector). "Nothing else
+        found" means no Windows-only libraries, Windows API calls or Windows-only build rules. It doesn't promise the
+        plugin is useful on a Mac, or that its code builds there without surprises.
+      </li>
+      <li>
+        <strong>Patch only (8).</strong> These ship Mac binaries, but their plugin-wide <code>SupportedTargetPlatforms</code> leaves
+        Mac out: ChaosCachingUSD, BaseCharacterFXEditor, XRCreativeFramework, InterchangeOpenVDB, MJPEGDecoderElectra,
+        GoogleARCore, PICOController, LiveLinkXR.
+      </li>
+      <li>
+        <strong>Rebuild (3).</strong> No list keeps Mac out, but there are no Mac binaries in the binary build:
+        LowLevelNetTrace, EOSOverlayInputProvider, ReplicationSystemTestPlugin.
+      </li>
+      <li>
+        <strong>Needs porting (42).</strong> Of these, 39 call Windows APIs outside any Windows-only <code>#if</code> block,
+        19 have build rules that link Windows libraries or refuse other platforms, and 7 ship prebuilt libraries for
+        Windows only. Most exist to wrap Windows or a Windows-only SDK, and no rebuild will change that: Media Foundation
+        (MfMedia, WMFCodecs), Direct3D 12 video (D3D12VideoDecodersElectra), the Microsoft GDK and Xbox plugins,
+        XInputDevice, RawInput, WinDualShock, PIX, Visual Studio integration, NVIDIA Reflex. A few look closer.
+        PSDImporter is one.
+      </li>
+    </ul>
+  </div>
+
+  <section class="psd" aria-labelledby="psd-title">
+    <div class="prose wide">
+      <h2 id="psd-title">PSDImporter, from the Windows shelf to a Mac</h2>
+      <p>
+        PSDImporter (<code>Engine/Plugins/Experimental/PSDImporter</code>) imports layered Photoshop files. Epic ships
+        it for Windows only. It comes with full source, and its PSD parser, <a href={PSD_SDK}>psd_sdk</a> (BSD 2-clause),
+        has a macOS implementation upstream.
+      </p>
+      <h3>What the scan said</h3>
+      <Terminal command="salvage refit scan Engine/Plugins/Experimental/PSDImporter" output={scanPsd} caption="Rerun for this page on the same Mac and engine, with the same result as the sounding." />
+      <p>
+        Four lists to patch, and one library to supply. PSDImporter's own code has no Windows API use.
+      </p>
+
+      <h3>The trap, reproduced</h3>
+      <p>
+        Run BuildPlugin on the unpatched plugin with <code>-TargetPlatforms=Mac</code>, and it prints <code>BUILD
+        SUCCESSFUL</code> in under a second. The log says <code>Building plugin for target platforms:</code> with
+        nothing after it, nothing is compiled, and the package has no binaries. Refit's check catches it:
+      </p>
+      <Terminal command="salvage refit build ~/Projects/Refitted/Plugins/PSDImporter" output={buildTrap} caption="Rerun for this page on an unpatched copy of the plugin. The whole command took 0.75 seconds. The project path is shortened." />
+    </div>
+
+    <ol class="log" aria-label="What it took">
+      {log.map((e, i) => (
+        <li class={e.mark}>
+          <span class="entry">{String(i + 1).padStart(2, "0")}</span>
+          <span class="mark" aria-hidden="true">{markText[e.mark]}</span>
+          <div>
+            <h3 class="hull">{e.title}</h3>
+            <p class="by">{e.by}</p>
+            {e.body.map((p) => <p>{p}</p>)}
+            {i === 2 && <Terminal command="salvage refit build Plugins/PSDImporter --install" output={buildOk} caption="An excerpt from the sounding: refit's check at the end of the build." />}
+            {i === 8 && (
+              <figure class="editor-log">
+                <pre><code>{importLog.trim()}</code></pre>
+                <figcaption>From the editor log: what the import script printed.</figcaption>
+              </figure>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <div class="prose wide">
+      <aside class="caveat">
+        <p>
+          <strong>Read the last entry carefully.</strong> The editor log ends with a normal shutdown, but the process
+          then caught a signal during its final teardown and exited with code 1. It does the same with PSDImporter
+          disabled (the same project quitting from a one-line Python script), so that's the scripted quit path in this
+          engine build, not the plugin.
+        </p>
+        <p>
+          The import ran from a Python script (<code>-ExecutePythonScript</code>) with the editor in unattended mode.
+          Nobody clicked through the editor's UI, and only the document asset was saved to disk. The quad actors and
+          layered materials PSDImporter can build from a document weren't tried.
+        </p>
+      </aside>
+
+      <h3>What's left for a real port</h3>
+      <ul>
+        <li>
+          The psd_sdk library should be built and checked in for Mac (and Linux, which the Build.cs also leaves as a
+          TODO), from the commit that matches the headers, with the POSIX file reader rather than the Mac one, or with
+          the Mac one fixed to copy its blocks.
+        </li>
+        <li>The path conversion in entry 06 belongs in PSDImporterCore for every non-Windows platform.</li>
+        <li>
+          The plugin's Mac header (<code>PsdNativeFile_Mac.h</code>) goes unused: PSDImporter includes the Windows header
+          on every platform. The layouts are close enough here (an 8-byte handle against a 4-byte file descriptor), but
+          a port should include the header that matches the library.
+        </li>
+        <li>
+          The scan's two notes about Windows-only <code>#if</code> blocks are in psd_sdk headers (the MSVC-only include
+          of <code>Windows.h</code> and an MSVC compiler switch) and need nothing on a Mac.
+        </li>
+        <li>Writing PSDs, psd_sdk's export side, wasn't tried.</li>
+      </ul>
+      <p>
+        None of this has been offered to Epic. It's what one Mac showed, written down so a port can start from it.
+      </p>
+    </div>
+  </section>
+
+  <div class="prose wide">
+    <h2>Setup</h2>
+    <table class="setup">
+      <tbody>
+        <tr><th scope="row">Machine</th><td>Apple M4, 16 GB, macOS 27.2</td></tr>
+        <tr><th scope="row">Engine</th><td>Unreal Engine 5.8.4, Epic's binary build, at <code>/Users/Shared/Epic Games/UE_5.8</code></td></tr>
+        <tr><th scope="row">Toolchain</th><td>Xcode with the Metal Toolchain, Apple clang</td></tr>
+        <tr><th scope="row">Date</th><td>November 2026</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Tried only on this engine and this Mac. Fab plugins installed into the engine show up in the engine scan. None
+      were installed here, so the engine's own plugins stood in for them.
+    </p>
+    <p>
+      The full write-up is <a href={REFIT_SOUNDING_DOC}>in the repository</a>. <a
+      href="/charts/salvage-refit/">Rebuild a Windows-only plugin for Mac</a> shows how to use refit on your own
+      plugins.
+    </p>
+  </div>
+</Page>
+<style>
+  /* Long paths break rather than push the page sideways on a phone. */
+  .prose code {
+    overflow-wrap: anywhere;
+  }
+  .verdicts {
+    border-collapse: collapse;
+    font-size: var(--step--1);
+    margin-block: var(--s-5);
+    width: 100%;
+    max-width: 40rem;
+  }
+  .verdicts th,
+  .verdicts td {
+    text-align: left;
+    padding: var(--s-2) var(--s-4) var(--s-2) 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .verdicts thead th {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    border-bottom: 2px solid var(--text);
+  }
+  .verdicts .num {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .verdicts tr.port td {
+    font-weight: 700;
+  }
+  .psd {
+    margin-top: var(--s-8);
+  }
+  .log {
+    list-style: none;
+    margin: var(--s-6) 0;
+    padding: 0;
+    max-width: 52rem;
+    border-left: 3px solid var(--antifouling);
+  }
+  .log > li {
+    display: grid;
+    grid-template-columns: 2.25rem 1.5rem minmax(0, 1fr);
+    gap: 0 var(--s-3);
+    padding: var(--s-5) 0 var(--s-5) var(--s-4);
+  }
+  .log > li + li {
+    border-top: 1px solid var(--rule);
+  }
+  .entry {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--muted);
+    padding-top: 0.35rem;
+  }
+  .mark {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: var(--step-1);
+    line-height: 1.4;
+  }
+  .ok .mark {
+    color: var(--link);
+  }
+  .bad .mark {
+    color: var(--accent);
+  }
+  .hand .mark {
+    color: var(--muted);
+  }
+  .log h3 {
+    margin: 0;
+    font-size: var(--step-2);
+    line-height: 1.2;
+  }
+  .bad h3 {
+    color: var(--accent);
+  }
+  .by {
+    margin: var(--s-1) 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+  .log p {
+    margin: var(--s-3) 0 0;
+    max-width: var(--measure);
+    overflow-wrap: anywhere;
+  }
+  .log p.by {
+    margin-top: var(--s-1);
+  }
+  .editor-log {
+    margin: var(--s-4) 0 0;
+    max-width: 52rem;
+  }
+  .editor-log pre {
+    margin: 0;
+    background: var(--night-sea);
+    color: var(--sea-glass);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    padding: var(--s-4) var(--s-5);
+    border-top: 4px solid var(--antifouling);
+    overflow-x: auto;
+  }
+  .editor-log figcaption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: var(--s-2);
+  }
+  .caveat {
+    border-left: 6px solid var(--crane-yellow);
+    padding: var(--s-2) 0 var(--s-2) var(--s-5);
+    margin-block: var(--s-6);
+  }
+  .caveat p {
+    margin: 0;
+  }
+  .caveat p + p {
+    margin-top: var(--s-3);
+  }
+  .setup th {
+    text-align: left;
+    padding-right: var(--s-4);
+    white-space: nowrap;
+    vertical-align: top;
+  }
+  @media (max-width: 600px) {
+    .log > li {
+      grid-template-columns: 1.6rem minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr;
+      padding-left: var(--s-3);
+    }
+    .log .mark {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .log > li > div {
+      grid-column: 2;
+      grid-row: 1 / 4;
+    }
+  }
+</style>
