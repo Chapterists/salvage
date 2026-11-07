@@ -46,6 +46,24 @@ pub fn inside_engine(path: &Path) -> bool {
         .any(|a| a.join("Engine/Build/Build.version").is_file())
 }
 
+/// `path` made absolute against `cwd`, so a relative path like
+/// `Plugins/PSDImporter` can be walked up to its project.
+pub fn absolute(path: &Path, cwd: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    }
+}
+
+/// The project a plugin folder sits in: the nearest folder above it, or the
+/// folder itself, with a .uproject. Relative paths are taken from `cwd`.
+pub fn enclosing_project(plugin_dir: &Path, cwd: &Path) -> Option<crate::project::Project> {
+    absolute(plugin_dir, cwd)
+        .ancestors()
+        .find_map(crate::project::Project::find_in)
+}
+
 /// Copies a package's Mac binaries into a plugin folder, replacing any there.
 pub fn install_binaries(package: &Path, plugin_dir: &Path) -> Result<PathBuf, String> {
     let from = package.join("Binaries/Mac");

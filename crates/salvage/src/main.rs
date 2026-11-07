@@ -862,6 +862,58 @@ fn run_clangd(args: ClangdArgs) -> ExitCode {
 }
 
 fn run_refit(command: RefitCommand) -> ExitCode {
+    // Paths are taken from the current folder, so `Plugins/PSDImporter` works
+    // as well as a full path, including when walking up to the project.
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let abs = |path: PathBuf| refit::absolute(&path, &cwd);
+    let command = match command {
+        RefitCommand::Scan {
+            paths,
+            project,
+            engine_plugins,
+            engine,
+            details,
+            all,
+            json,
+        } => RefitCommand::Scan {
+            paths: paths.into_iter().map(abs).collect(),
+            project: project.map(abs),
+            engine_plugins,
+            engine,
+            details,
+            all,
+            json,
+        },
+        RefitCommand::Patch {
+            plugin,
+            project,
+            undo,
+            dry_run,
+        } => RefitCommand::Patch {
+            plugin: abs(plugin),
+            project: project.map(abs),
+            undo,
+            dry_run,
+        },
+        RefitCommand::Build {
+            plugin,
+            out,
+            install,
+            engine,
+            json,
+        } => RefitCommand::Build {
+            plugin: abs(plugin),
+            out: out.map(abs),
+            install,
+            engine,
+            json,
+        },
+        RefitCommand::Check { package, log, json } => RefitCommand::Check {
+            package: abs(package),
+            log: log.map(abs),
+            json,
+        },
+    };
     match command {
         RefitCommand::Scan {
             paths,
@@ -1149,7 +1201,7 @@ fn refit_build(
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let project = plugin_dir.ancestors().find_map(Project::find_in);
+    let project = refit::enclosing_project(&plugin_dir, &cwd_or_root());
     let engine = match engine::discover(engine.as_deref(), project.as_ref(), &SystemProbe) {
         Ok(Some(engine)) => engine,
         Ok(None) => {
@@ -1270,6 +1322,10 @@ fn print_check(check: &refit::PackageCheck, json: bool) -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+fn cwd_or_root() -> PathBuf {
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"))
 }
 
 fn usage_error(message: &str) -> ExitCode {
