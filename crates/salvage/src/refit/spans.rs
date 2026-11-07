@@ -48,9 +48,11 @@ impl Spanned {
 }
 
 pub fn parse(text: &str) -> Result<Spanned, String> {
+    // Windows editors often start JSON files with a UTF-8 byte order mark.
+    let start = if text.starts_with('\u{feff}') { 3 } else { 0 };
     let mut p = Parser {
         b: text.as_bytes(),
-        i: 0,
+        i: start,
     };
     p.skip();
     let value = p.value()?;

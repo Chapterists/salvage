@@ -33,6 +33,8 @@ pub enum Verdict {
     Partial,
     /// Source is there and nothing blocks Mac: build it.
     Rebuild,
+    /// The Mac binaries are there, but a list keeps Mac out: patch it.
+    PatchOnly,
     /// Only an allow list keeps it off Mac: patch it, then build it.
     PatchAndRebuild,
     /// The source needs changes before it can build for Mac.
@@ -48,6 +50,7 @@ impl Verdict {
             Verdict::ContentOnly => "content only, works on Mac",
             Verdict::Partial => "works on Mac without its Windows-only modules",
             Verdict::Rebuild => "rebuild for Mac",
+            Verdict::PatchOnly => "allow list only: patch (Mac binaries are there)",
             Verdict::PatchAndRebuild => "allow list only: patch, then rebuild",
             Verdict::NeedsPorting => "needs porting",
             Verdict::NoSource => "no source: ask the vendor",
@@ -363,7 +366,14 @@ pub fn scan(file: &Path, deep: bool) -> Result<Plugin, String> {
             .iter()
             .any(|f| matches!(f, Finding::AllowList { .. })) =>
         {
-            Verdict::PatchAndRebuild
+            if findings
+                .iter()
+                .any(|f| matches!(f, Finding::NoMacBinaries { .. }))
+            {
+                Verdict::PatchAndRebuild
+            } else {
+                Verdict::PatchOnly
+            }
         }
         None => Verdict::Rebuild,
     };

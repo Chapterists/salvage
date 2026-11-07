@@ -7,11 +7,12 @@ use super::package::PackageCheck;
 use super::scan::{Finding, Plugin, Verdict};
 use crate::ui::{BAD, BOLD, DIM, GOOD, WARN, paint};
 
-const ORDER: [Verdict; 7] = [
+const ORDER: [Verdict; 8] = [
     Verdict::Works,
     Verdict::ContentOnly,
     Verdict::Partial,
     Verdict::Rebuild,
+    Verdict::PatchOnly,
     Verdict::PatchAndRebuild,
     Verdict::NeedsPorting,
     Verdict::NoSource,
@@ -21,7 +22,7 @@ fn mark(verdict: &Verdict) -> String {
     match verdict {
         Verdict::Works | Verdict::ContentOnly => paint(GOOD, "✓"),
         Verdict::Partial => paint(GOOD, "◐"),
-        Verdict::Rebuild | Verdict::PatchAndRebuild => paint(WARN, "~"),
+        Verdict::Rebuild | Verdict::PatchOnly | Verdict::PatchAndRebuild => paint(WARN, "~"),
         Verdict::NeedsPorting | Verdict::NoSource => paint(BAD, "✗"),
     }
 }
@@ -168,6 +169,7 @@ pub fn findings(plugin: &Plugin) -> String {
         ));
     }
     let next = match plugin.verdict {
+        Verdict::PatchOnly => Some("Next: salvage refit patch."),
         Verdict::PatchAndRebuild => Some("Next: salvage refit patch, then salvage refit build."),
         Verdict::Rebuild => Some("Next: salvage refit build."),
         Verdict::NeedsPorting => {

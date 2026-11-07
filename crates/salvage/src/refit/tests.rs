@@ -569,3 +569,22 @@ fn engine_installs_are_recognised() {
     assert!(inside_engine(&tmp.path().join("UE_5.8/Engine/Plugins")));
     assert!(!inside_engine(tmp.path()));
 }
+
+#[test]
+fn mac_binaries_held_back_by_a_list_need_only_the_patch() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = plugin(tmp.path(), "Wake", &[("Wake", None)], Some("\"Win64\""));
+    add_mac_binaries(&dir, &["Wake"]);
+    assert_eq!(scan_dir(&dir).verdict, Verdict::PatchOnly);
+}
+
+#[test]
+fn a_byte_order_mark_is_skipped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("Buoy");
+    write(
+        &dir.join("Buoy.uplugin"),
+        "\u{feff}{ \"CanContainContent\": true }",
+    );
+    assert_eq!(scan_dir(&dir).verdict, Verdict::ContentOnly);
+}
