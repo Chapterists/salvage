@@ -19,6 +19,8 @@ type Section = {
   plain: string;
   why: string[];
   unverified?: string;
+  /** What a sounding has measured about it, with the machine named. */
+  measured?: string;
   settings: string[];
   settingsNote?: string;
   see?: string;
@@ -78,8 +80,8 @@ const sections: Section[] = [
     why: [
       "At Epic the pool holds 8 times as many pages as at Low or Medium, and Cine doubles it again. New projects start with virtual shadow maps turned on.",
     ],
-    unverified:
-      "How many megabytes a page takes depends on the format it's stored in. If it's 4 bytes per texel, a page is 64 KB and Epic's pool is about 256 MB, plus page tables. We haven't confirmed the format, so that figure is an estimate.",
+    measured:
+      "On an Apple M4 Mac running Epic's Third Person template, the shadow page pool was 512 MB at 4096 pages and 64 MB at 512 pages: 128 KB a page. So Epic's pool is about 512 MB, twice the 256 MB that 4 bytes a texel would give.",
     settings: ["r.Shadow.Virtual.MaxPhysicalPages"],
     see: "r.Shadow.Virtual.ShowStats 1",
     docs: [{ href: `${DOCS}/virtual-shadow-maps-in-unreal-engine`, title: "Virtual Shadow Maps" }],
@@ -97,7 +99,8 @@ const sections: Section[] = [
       "Each step up is a bigger atlas. Epic's 4096 by 4096 covers 4 times the area of Medium's 2048 by 2048. At Low, Lumen's lighting is off altogether.",
       "New projects start with Lumen on for both lighting and reflections, and with mesh distance fields generated for every mesh you import (r.GenerateMeshDistanceFields). Those cost memory and disk of their own.",
     ],
-    unverified: "How many megabytes an atlas of each size takes, we haven't confirmed.",
+    measured:
+      "On an Apple M4 Mac running Epic's Third Person template, going from Epic's 4096 atlas to Medium's 2048 took 400 MB out of the render target pool. How much the 2048 atlas itself takes, we haven't measured.",
     settings: ["r.LumenScene.SurfaceCache.AtlasSize", "sg.GlobalIlluminationQuality"],
     docs: [{ href: `${DOCS}/lumen-technical-details-in-unreal-engine`, title: "Lumen Technical Details" }],
   },
@@ -271,6 +274,11 @@ const summary = [
           {s.unverified && (
             <p class="unverified"><strong>Unverified.</strong> {s.unverified}</p>
           )}
+          {s.measured && (
+            <p class="unverified measured">
+              <strong>Measured.</strong> {s.measured} <a href="/soundings/trim-third-person-m4-16gb/">The sounding</a>.
+            </p>
+          )}
           <dl class="facts">
             <div>
               <dt>Set by</dt>
@@ -321,11 +329,16 @@ const summary = [
     <h2>What we haven't confirmed</h2>
     <ul>
       <li>How many megabytes each shader compile worker uses in 5.8.</li>
-      <li>How many megabytes a Lumen surface cache atlas takes at each size.</li>
-      <li>How many bytes a virtual shadow map page takes, and so the pool's size in megabytes.</li>
+      <li>
+        How many megabytes a Lumen surface cache atlas takes at each size. We've measured the difference between two
+        sizes, 4096 and 2048, on one Mac.
+      </li>
       <li>What an Apple M4 reports to the engine as its graphics memory, which the texture pool's cap is based on.</li>
     </ul>
-    <p>When we've measured them, this page will say so, with the numbers.</p>
+    <p>
+      Virtual shadow map pages are measured now: 128 KB each on an Apple M4. When we've measured the rest, this page
+      will say so, with the numbers.
+    </p>
 
     <h2>Before you change anything</h2>
     <p>
@@ -336,11 +349,12 @@ const summary = [
 
     <h2>What we're doing about it</h2>
     <p>
-      We haven't changed any of these defaults yet, so this page doesn't claim to save a single megabyte. When we do,
-      each change will be measured before and after with <a href="/charts/salvage-soundings/"><code>salvage
-      soundings</code></a>, using <a href="/charts/capturing-memory-runs/">the capture recipe</a>, and the numbers will
-      go on the <a href="/soundings/">soundings page</a>. That work is <a href="/#lighter-unreal">Lighter Unreal</a>:
-      getting Unreal games and the editor to fit the machines people already have.
+      <a href="/charts/salvage-trim/"><code>salvage trim</code></a> gives a project memory tiers for 8, 12 and 16 GB
+      machines, which changes several of these defaults on those machines only. The tiers were measured before and
+      after with <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a>, and the numbers are
+      in <a href="/soundings/trim-third-person-m4-16gb/">the first sounding</a>, with what they don't show yet. That work
+      is <a href="/#lighter-unreal">Lighter Unreal</a>: getting Unreal games and the editor to fit the machines people
+      already have.
     </p>
   </div>
 </Page>
@@ -482,6 +496,12 @@ const summary = [
   }
   .unverified strong {
     color: var(--mark);
+  }
+  .measured {
+    border-left-color: var(--accent);
+  }
+  .measured strong {
+    color: var(--accent);
   }
   .facts {
     margin: var(--s-5) 0 0;

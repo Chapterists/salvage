@@ -1,0 +1,229 @@
+---
+// The first sounding, drawn as draft marks: four views of the same bow at the
+// waterline, one per configuration, with the sea at the same height in each.
+// The draft marks are in gigabytes of process memory, and each hull sits in the
+// water at its measured draft, to scale. The hull is painted antifouling red up
+// to stock's draft, so whatever a tier saves shows as red riding above the sea.
+//
+// Numbers come from lib/trim-sounding.ts (medians of 4 runs).
+import { configs, stock, mb, gb, signed, SOUNDING_HREF } from "../lib/trim-sounding";
+
+interface Props {
+  /** Leave out the run ranges and the caption, for the home page. */
+  compact?: boolean;
+  /** Link the caption to the full sounding (off on the sounding itself). */
+  link?: boolean;
+}
+const { compact = false, link = true } = Astro.props;
+
+const W = 125; // the sea's surface, in drawing units from the top
+const H = 230; // drawing height
+const S = 50; // drawing units per GB
+const STOCK_GB = stock.mem / 1024;
+// The stem rakes forward as it rises, as on the hero's bow.
+const stemX = (g: number) => 78 - g * 5;
+
+const panels = configs.map((c) => {
+  const draft = c.mem / 1024;
+  const y = (g: number) => W - (g - draft) * S;
+  const lo = draft - (H - W) / S - 0.3;
+  const hi = draft + W / S + 0.3;
+  const band = (a: number, b: number) =>
+    `M${stemX(b).toFixed(1)} ${y(b).toFixed(1)} L210 ${y(b).toFixed(1)} L210 ${y(a).toFixed(1)} L${stemX(a).toFixed(1)} ${y(a).toFixed(1)} Z`;
+  const marks = [];
+  // Only numerals that fit whole inside the window (they stand about 20 units tall).
+  for (let g = Math.ceil(lo); g <= Math.floor(hi); g++) if (y(g) > 24) marks.push({ g, x: stemX(g) + 20, y: y(g) });
+  const saved = stock.mem - c.mem;
+  return {
+    ...c,
+    red: band(lo, STOCK_GB),
+    navy: band(STOCK_GB, hi),
+    marks,
+    saved,
+    // The red showing above the water: from the sea up to stock's draft.
+    strip: saved > 0 ? { top: y(STOCK_GB), bottom: W } : null,
+    title:
+      c.key === "stock"
+        ? `Stock: ${mb(c.mem)} MB, about ${gb(c.mem)} GB. The red antifouling paint ends exactly at the water.`
+        : `${c.label}: ${mb(c.mem)} MB, about ${gb(c.mem)} GB, ${signed(c.mem - stock.mem)} MB against stock. The hull rides ${mb(saved)} MB higher, so red shows above the water.`,
+  };
+});
+---
+<figure class:list={["riding", { compact }]}>
+  <ol class="hulls">
+    {panels.map((p) => (
+      <li>
+        <svg viewBox={`0 0 200 ${H}`} role="img" aria-label={p.title}>
+          <defs>
+            <clipPath id={`riding-${p.key}`}><rect x="0" y="0" width="200" height={H} /></clipPath>
+          </defs>
+          <g clip-path={`url(#riding-${p.key})`}>
+            <path class="navy" d={p.navy} />
+            <path class="red" d={p.red} />
+            {p.marks.map((m) => (
+              <text class="mark" x={m.x} y={m.y}>{m.g}</text>
+            ))}
+            <rect class="sea" x="0" y={W} width="200" height={H - W} />
+            <path class="surface" d={`M0 ${W} H200`} />
+          </g>
+          {p.strip && (
+            <>
+              <path class="bracket" d={`M184 ${p.strip.top} h8 V${p.strip.bottom} h-8`} />
+            </>
+          )}
+        </svg>
+        <div class="reading">
+          <span class="name hull">{p.label}</span>
+          <span class="mb"><strong>{mb(p.mem)}</strong> MB</span>
+          {p.key === "stock" ? (
+            <span class="delta flat">the baseline</span>
+          ) : (
+            <span class="delta">{signed(p.mem - stock.mem)} MB</span>
+          )}
+          {!compact && <span class="range">runs {mb(p.memRange[0])}–{mb(p.memRange[1])}</span>}
+        </div>
+      </li>
+    ))}
+  </ol>
+  <figcaption>
+    {compact ? (
+      <>
+        Process memory of Epic's Third Person template at 60 seconds, on an Apple M4 Mac with 16 GB, with each of
+        salvage trim's tiers. Draft marks in GB, drawn to scale.
+      </>
+    ) : (
+      <>
+        <strong>Measured.</strong> Process physical memory 60 seconds into Epic's Third Person template, on an Apple M4
+        Mac with 16 GB: the median of 4 runs per configuration. Each hull sits at its measured draft, to scale, with the
+        draft marks in GB of 1024 MB. The hull is painted red up to where stock sat, so the red above the water is what
+        each tier saved. The 12 and 8 GB tiers ran on this 16 GB Mac, so they show what those tiers' settings save, not
+        how a smaller machine behaves.
+        {link && <> <a href={SOUNDING_HREF}>The whole sounding</a>.</>}
+      </>
+    )}
+  </figcaption>
+</figure>
+<style>
+  .riding {
+    margin: var(--s-7) 0;
+    background: var(--night-sea);
+    color: var(--foam);
+    padding: var(--s-6) var(--s-6) var(--s-5);
+    max-width: 62rem;
+    border-bottom: 6px solid var(--antifouling);
+  }
+  .hulls {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* No gap between columns, so the sea runs on from one hull to the next. */
+    gap: var(--s-5) 0;
+  }
+  .hulls li {
+    min-width: 0;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .navy {
+    fill: var(--hull-navy-hi);
+  }
+  .red {
+    fill: var(--antifouling);
+  }
+  .mark {
+    fill: var(--foam);
+    font-family: var(--font-sans);
+    font-stretch: var(--stretch-hull);
+    font-weight: 800;
+    font-size: 24px;
+  }
+  .sea {
+    fill: var(--deep-sea);
+    opacity: 0.8;
+  }
+  .surface {
+    stroke: var(--sea-glass);
+    stroke-width: 2;
+  }
+  .bracket {
+    fill: none;
+    stroke: var(--crane-yellow);
+    stroke-width: 2.5;
+  }
+  .reading {
+    display: grid;
+    gap: 0.1rem;
+    margin-top: var(--s-3);
+    padding-right: var(--s-3);
+  }
+  .name {
+    font-size: var(--step-0);
+    color: var(--foam);
+  }
+  .mb {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--steel);
+  }
+  .mb strong {
+    font-family: var(--font-sans);
+    font-stretch: var(--stretch-hull);
+    font-weight: 800;
+    font-size: var(--step-2);
+    color: var(--foam);
+  }
+  .delta {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--crane-yellow);
+  }
+  .delta.flat {
+    font-weight: 400;
+    color: var(--steel);
+  }
+  .range {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--steel);
+  }
+  figcaption {
+    margin-top: var(--s-5);
+    padding-top: var(--s-4);
+    border-top: 1px solid rgb(244 241 234 / 0.16);
+    font-size: var(--step--1);
+    line-height: 1.6;
+    color: var(--steel);
+    max-width: 46rem;
+  }
+  figcaption strong {
+    color: var(--crane-yellow);
+  }
+  figcaption a {
+    color: var(--sea-glass);
+  }
+  .compact {
+    margin: 0;
+  }
+  @media (max-width: 700px) {
+    .riding {
+      margin-inline: calc(var(--gutter) * -1);
+      padding: var(--s-5) var(--gutter);
+    }
+    .compact {
+      margin-inline: 0;
+    }
+    .hulls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mb strong {
+      font-size: var(--step-1);
+    }
+  }
+</style>

@@ -1,0 +1,9 @@
+  Draft  7.5 GB → 6.4 GB at peak   −1.1 GB
+
+  Against smaller machines  25% kept free for the OS and other apps
+      8 GB  ✗ trim 1.5 GB       →  ✗ trim 453 MB
+     12 GB  ✓ 1.5 GB spare      →  ✓ 2.6 GB spare
+     16 GB  ✓ 4.5 GB spare      →  ✓ 5.6 GB spare
+
+  Biggest changes
+    total  Render target pool             1.8 GB → 906 MB    −925 MB

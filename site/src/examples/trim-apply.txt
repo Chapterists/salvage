@@ -1,0 +1,10 @@
+
+  salvage trim  TP_ThirdPersonBP
+  ✓ Wrote Config/DefaultDeviceProfiles.ini
+  ✓ Wrote Config/Mac/MacEngine.ini
+  ✓ Wrote Config/Windows/WindowsEngine.ini
+  ✓ Wrote Config/Linux/LinuxEngine.ini
+
+  Restart the editor or game to pick these up. Each value has its reason next to it;
+  `salvage trim --undo` takes them all out.
+

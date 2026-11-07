@@ -1,32 +1,45 @@
 ---
-// How a sounding will read: draft before and after, against a strip of draft
-// marks. With no soundings yet it shows no waterline and no numbers.
+// The latest sounding at a glance: draft before and after, against a strip of
+// draft marks, with the water at each draft. Numbers come from
+// lib/trim-sounding.ts.
+import { stock, tier8, mb, gb, SOUNDING_HREF } from "../lib/trim-sounding";
+
 const marks = [16, 14, 12, 10, 8, 6, 4, 2];
+// The numerals' baselines sit on their marks: 16 at y = 40, 19 units per GB.
+const y = (g: number) => 40 + (16 - g) * 19;
+const before = y(stock.mem / 1024);
+const after = y(tier8.mem / 1024);
 ---
 <figure class="readout">
   <svg class="strip" viewBox="0 0 120 330" aria-hidden="true">
     <rect x="0" y="0" width="120" height="330" fill="var(--hull-navy-hi)" />
-    <rect x="0" y="244" width="120" height="86" fill="var(--antifouling)" />
-    {marks.map((gb, i) => (
-      <text x="28" y={40 + i * 38}>{gb}</text>
+    <rect x="0" y={before} width="120" height={330 - before} fill="var(--antifouling)" />
+    {marks.map((gb) => (
+      <text x="28" y={y(gb)}>{gb}</text>
     ))}
     <text class="unit" x="72" y="40">GB</text>
+    <rect class="sea" x="0" y={after} width="120" height={330 - after} />
+    <path class="surface" d={`M0 ${after} H120`} />
+    <path class="was" d={`M0 ${before} H120`} />
   </svg>
   <dl>
     <div>
       <dt>Draft before</dt>
-      <dd>Not measured</dd>
+      <dd>{gb(stock.mem)} GB <span>{mb(stock.mem)} MB, stock</span></dd>
     </div>
     <div>
       <dt>Draft after</dt>
-      <dd>Not measured</dd>
+      <dd>{gb(tier8.mem)} GB <span>{mb(tier8.mem)} MB, salvage trim's 8 GB tier</span></dd>
     </div>
     <div>
       <dt>Machine</dt>
-      <dd>None yet</dd>
+      <dd class="small">Apple M4, 16 GB <span>Epic's Third Person template, Unreal Engine 5.8.4</span></dd>
     </div>
   </dl>
-  <figcaption>No soundings yet. When there are, the waterline goes on the strip and the numbers go here.</figcaption>
+  <figcaption>
+    The latest sounding: process memory 60 seconds in, median of 4 runs. The red above the water is what the 8 GB tier
+    saved. <a href={SOUNDING_HREF}>Read it, with what it doesn't show yet</a>.
+  </figcaption>
 </figure>
 <style>
   .readout {
@@ -76,15 +89,44 @@ const marks = [16, 14, 12, 10, 8, 6, 4, 2];
     font-stretch: var(--stretch-hull);
     font-weight: 800;
     font-size: var(--step-2);
+    color: var(--foam);
+  }
+  dd span {
+    display: block;
+    font-family: var(--font-mono);
+    font-stretch: 100%;
+    font-weight: 400;
+    font-size: 0.75rem;
     color: var(--steel);
+    margin-top: 0.15rem;
+  }
+  dd.small {
+    font-size: var(--step-1);
+  }
+  .sea {
+    fill: var(--deep-sea);
+    opacity: 0.8;
+  }
+  .surface {
+    stroke: var(--sea-glass);
+    stroke-width: 2.5;
+  }
+  .was {
+    stroke: var(--foam);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    opacity: 0.7;
   }
   figcaption {
     align-self: end;
     font-family: var(--font-mono);
     font-size: 0.75rem;
     line-height: 1.6;
-    color: var(--sea-glass);
+    color: var(--steel);
     padding-top: var(--s-4);
+  }
+  figcaption a {
+    color: var(--sea-glass);
   }
   @media (max-width: 520px) {
     .readout {

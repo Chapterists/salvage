@@ -1,0 +1,367 @@
+---
+import Page from "../../layouts/Page.astro";
+import RidingHigher from "../../components/RidingHigher.astro";
+import Terminal from "../../components/Terminal.astro";
+import { configs, stock, tier8, mb, signed, SOUNDING_DOC } from "../../lib/trim-sounding";
+import soundingMemreport from "../../examples/trim-sounding-memreport.txt?raw";
+import soundingLlm from "../../examples/trim-sounding-llm.txt?raw";
+
+const tiers = configs.slice(1);
+const range = (r: [number, number]) => `${mb(r[0])}–${mb(r[1])}`;
+const memoryRows: { what: string; value: (c: (typeof configs)[number]) => string; delta?: (c: (typeof configs)[number]) => number }[] = [
+  { what: "Process physical memory at 60 s (memreport)", value: (c) => mb(c.mem), delta: (c) => c.mem - stock.mem },
+  { what: "Peak process physical memory, 10 to 70 s (CSV profile)", value: (c) => mb(c.peak), delta: (c) => c.peak - stock.peak },
+  { what: "Peak LLM tracked total (LLM platform CSV)", value: (c) => mb(c.llm), delta: (c) => c.llm - stock.llm },
+  { what: "Render target pool in use (memreport)", value: (c) => mb(c.rtPool), delta: (c) => c.rtPool - stock.rtPool },
+  { what: "Metal buffers (LLM platform CSV)", value: (c) => mb(c.metal), delta: (c) => c.metal - stock.metal },
+];
+const ranges: Record<string, (c: (typeof configs)[number]) => [number, number] | undefined> = {
+  "Process physical memory at 60 s (memreport)": (c) => c.memRange,
+  "Peak process physical memory, 10 to 70 s (CSV profile)": (c) => c.peakRange,
+  "Peak LLM tracked total (LLM platform CSV)": (c) => c.llmRange,
+  "Render target pool in use (memreport)": (c) => c.rtPoolRange,
+};
+const ms = (n: number) => n.toFixed(2);
+const frameRows: { what: string; value: (c: (typeof configs)[number]) => string }[] = [
+  { what: "Frame time, median", value: (c) => ms(c.frame) },
+  { what: "Frame time, 95th percentile", value: (c) => ms(c.frameP95) },
+  { what: "Frames over 50 ms (of 1800)", value: (c) => `${c.slow} [${c.slowRange[0]}–${c.slowRange[1]}]` },
+  { what: "GPU time, median", value: (c) => ms(c.gpu) },
+  { what: "Render thread, median", value: (c) => ms(c.render) },
+  { what: "Game thread, median", value: (c) => ms(c.game) },
+];
+// Only report a difference where it isn't noise in the second decimal.
+const frameDelta: Record<string, (c: (typeof configs)[number]) => number | undefined> = {
+  "GPU time, median": (c) => c.gpu - stock.gpu,
+  "Render thread, median": (c) => c.render - stock.render,
+  "Game thread, median": (c) => c.game - stock.game,
+};
+---
+<Page
+  title="salvage trim, measured on a 16 GB Mac"
+  compact
+  description="What salvage trim's memory tiers changed in memory and frame time on Epic's Third Person template, on an Apple M4 Mac with 16 GB: 4 runs per configuration, the method, the spread, and what the numbers don't show yet."
+  dek="The first sounding. Epic's Third Person template on an Apple M4 Mac with 16 GB, run stock and with each of salvage trim's three tiers, 4 times each. The 8 GB tier took 1,104 MB off the game, and the frame rate didn't move."
+>
+  <RidingHigher link={false} />
+
+  <aside class="caveats" aria-labelledby="not-yet">
+    <h2 id="not-yet" class="hull">What this doesn't show yet</h2>
+    <ul>
+      <li>
+        <strong>Real 8 and 12 GB machines.</strong> The 12 and 8 GB tiers ran on this 16 GB Mac, made to pick those
+        tiers' settings. That measures what the settings save. It doesn't show how a game behaves on a machine that is
+        actually short of memory, with swapping, memory compression and the OS taking memory back.
+      </li>
+      <li>
+        <strong>A packaged build.</strong> These runs used <code>-game</code> from the editor, which loads uncooked
+        content and carries editor modules, so the absolute numbers are higher than a packaged game's. The differences
+        between configurations are what this measures.
+      </li>
+      <li>
+        <strong>The editor preset.</strong> <code>salvage trim --editor</code> wasn't measured. It needs a session
+        heavy on shader compiling, not a game run.
+      </li>
+      <li>
+        <strong>Settings this template doesn't exercise.</strong> The 8 GB tier's texture pool never filled (the level
+        needs about 10 MB of streaming textures), there's no foliage, no streamed sound and little garbage. Those
+        settings stay in the tiers because what they do is well defined, but none has a measured saving yet.
+      </li>
+      <li>
+        <strong>Motion, other quality levels, other machines.</strong> The player stood still, everything ran at Epic
+        quality, at 1280 by 720, on one Mac with one template.
+      </li>
+      <li>
+        <strong>That it fits 8 GB.</strong> Even trimmed, this run needs 453 MB more than an 8 GB machine has spare
+        once a quarter is left for the OS and other apps, by <a href="#what-salvage-soundings-says"><code>salvage
+        soundings</code>' reckoning</a>. A packaged build should be smaller, but we haven't measured one.
+      </li>
+    </ul>
+  </aside>
+
+  <div class="prose wide">
+    <h2>Memory</h2>
+    <p>
+      Medians of 4 runs, with the lowest and highest underneath. Differences are against stock. Memory is in MB of
+      1024 by 1024 bytes, as Unreal reports it.
+    </p>
+    <div class="table-scroll">
+      <table class="numbers">
+        <thead>
+          <tr>
+            <th scope="col">MB</th>
+            {configs.map((c) => <th scope="col" class="num">{c.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {memoryRows.map((row) => (
+            <tr>
+              <th scope="row">{row.what}</th>
+              {configs.map((c) => {
+                const d = row.delta?.(c) ?? 0;
+                const r = ranges[row.what]?.(c);
+                return (
+                  <td class="num">
+                    <span class="v">{row.value(c)}</span>
+                    {c.key !== "stock" && d !== 0 && <span class="d">{signed(d)}</span>}
+                    {r && r[0] !== r[1] && <span class="r">{range(r)}</span>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      The first row decides whether a game fits a machine: it's the memory the process holds, everything included. The
+      8 GB tier took it from {mb(stock.mem)} MB to {mb(tier8.mem)} MB, {signed(tier8.mem - stock.mem)} MB, and the
+      peak over the run fell by almost the same, {signed(tier8.peak - stock.peak)} MB. The other rows show where the difference comes from.
+    </p>
+
+    <h2>What it costs</h2>
+    <p>
+      The frame rate didn't move. Every configuration held the 30 fps cap the runs used, with the same median frame
+      time and nearly the same 95th percentile. Times in milliseconds over frames 300 to 2100 (10 to 70 seconds),
+      medians of the per-run medians:
+    </p>
+    <div class="table-scroll">
+      <table class="numbers">
+        <thead>
+          <tr>
+            <th scope="col">ms</th>
+            {configs.map((c) => <th scope="col" class="num">{c.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {frameRows.map((row) => (
+            <tr>
+              <th scope="row">{row.what}</th>
+              {configs.map((c) => {
+                const d = frameDelta[row.what]?.(c);
+                return (
+                  <td class="num">
+                    <span class="v">{row.value(c)}</span>
+                    {c.key !== "stock" && d !== undefined && Math.abs(d) >= 0.1 && <span class="d">{signed(d, 2)}</span>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li>
+        <strong>The GPU got faster.</strong> With the 12 and 8 GB tiers, GPU time went down by about 1.6 ms, 6%. A
+        smaller Lumen surface cache is less to light.
+      </li>
+      <li>
+        <strong>The render thread got slower.</strong> It went up by about 0.4 to 0.5 ms with the 12 and 8 GB tiers, 11
+        to 15%. That's still far inside the 33 ms frame.
+      </li>
+      <li>
+        <strong>Slow frames.</strong> Every configuration had a handful of frames over 50 ms out of 1800. The 8 GB tier's
+        median was 6 against stock's 4, with its runs ranging from 4 to 8. Four runs can't say whether that's a
+        difference.
+      </li>
+      <li>
+        <strong>The picture.</strong> Screenshots taken at the same frame in each configuration matched stock to within
+        frame-to-frame noise: a mean difference of 0.13 per 8-bit color channel, the same for the 16 GB tier (whose
+        Nanite pool can't change anything in this view) as for the 12 and 8 GB tiers. The camera here sees a few metres
+        of floor and one character, with no distant geometry and short shadows, so this says nothing about other views.
+      </li>
+      <li><strong>No warnings.</strong> None of the runs logged a shadow page pool overflow or any other pool running out.</li>
+    </ul>
+
+    <h2>Where the savings come from</h2>
+    <ul>
+      <li>
+        <strong>16 GB tier: the Nanite streaming pool</strong>, 384 MB instead of 512 MB. The pool is allocated up
+        front, so it shows as 128 MB less in Metal buffers and about 190 MB less tracked memory, in every scene.
+      </li>
+      <li>
+        <strong>12 GB tier: a smaller Lumen surface cache atlas</strong> as well, 2048 instead of 4096, which took
+        400 MB out of the render target pool.
+      </li>
+      <li>
+        <strong>8 GB tier: fewer virtual shadow map pages</strong> as well, 512 instead of 4096. The shadow page pool
+        went from 512 MB to 64 MB.
+      </li>
+    </ul>
+    <p>
+      Process memory fell by 55 to 80% of the change in tracked memory, not all of it. On Apple silicon the GPU's
+      memory comes out of the same RAM, so it does show up in process memory, but not one for one: Metal grows its
+      heaps in 512 MB steps, and in the 8 GB run below, untagged memory grew by 448 MB while Metal textures shrank.
+    </p>
+    <p>
+      <strong>The 16 GB tier is bimodal.</strong> In 1 of its 4 runs, and 2 of 5 in an earlier batch, the Metal
+      texture heap stayed 512 MB smaller, which put that run 500 MB lower. Stock never did this in 9 runs, and neither
+      did the Nanite pool on its own in 5. It's probably where an allocation falls against the 512 MB heap step, but
+      this test can't say. Go by the median, {signed(configs[1].mem - stock.mem)} MB.
+    </p>
+
+    <h2 id="what-salvage-soundings-says">What salvage soundings says</h2>
+    <p>
+      A stock run and an 8 GB tier run, both close to the medians, compared
+      with <a href="/charts/salvage-soundings/"><code>salvage soundings</code></a>. First the memreports at 60
+      seconds:
+    </p>
+    <Terminal
+      command="salvage soundings stock.memreport tier-8gb.memreport"
+      output={soundingMemreport}
+      caption="An excerpt. Sizes are in GB and MB of 1024, rounded to what the tool prints."
+    />
+    <p>
+      The 8 GB line is the honest one: trimmed or not, this run is bigger than an 8 GB machine can hold with a quarter
+      left for the OS and other apps. Then the LLM platform CSVs of the same two runs:
+    </p>
+    <Terminal command="salvage soundings stock.csv tier-8gb.csv" output={soundingLlm} caption="An excerpt." />
+
+    <h2>Settings that didn't make it</h2>
+    <p>
+      An earlier batch of 5 runs each measured every setting of the first 16 GB tier on its own, on top of stock. Some
+      saved nothing, and came out:
+    </p>
+    <ul>
+      <li>
+        <strong>A lower render target pool floor</strong> (<code>r.RenderTargetPoolMin</code> of 300, 200 and 150 MB):
+        7,669 MB against stock's 7,688, and no change in tracked memory. It only frees render targets that have gone
+        unused, and everything in this pool is used every frame. <code>salvage soundings</code> no longer suggests it.
+      </li>
+      <li>
+        <strong>Low-memory garbage collection</strong> (<code>gc.LowMemory.MemoryThresholdMB</code> of 2048, 1536 and
+        1024 MB). It turns on when free memory falls below the threshold, and once the level was running, macOS kept
+        free memory between about 1.3 and 1.9 GB. So it was on all the time in the 16 and 12 GB tiers, and saved
+        nothing measurable.
+      </li>
+      <li>
+        <strong>Texture pool pins</strong> at 1000, 768 and 512 MB were changed before measuring. Epic's texture
+        quality presets set the pool to 400, 600, 800 and 1000 MB, and a pin overrides them, so 1000 MB did nothing at
+        Epic and the others added memory at lower presets. Only the 8 GB tier pins the pool now, at 400 MB.
+      </li>
+    </ul>
+
+    <h2>Setup</h2>
+    <table class="setup">
+      <tbody>
+        <tr><th scope="row">Machine</th><td>Apple M4 (10-core CPU, 10-core GPU), 16 GB unified memory</td></tr>
+        <tr><th scope="row">OS</th><td>macOS 27.2 (26B123)</td></tr>
+        <tr><th scope="row">Engine</th><td>Unreal Engine 5.8.4 (58902052), Epic's binary build</td></tr>
+        <tr><th scope="row">Project</th><td>A fresh copy of the Third Person template (Blueprint), level <code>Lvl_ThirdPerson</code>, no changes besides <code>salvage trim</code></td></tr>
+        <tr><th scope="row">Build</th><td><code>-game</code> from the editor (Development, uncooked content), not a packaged build</td></tr>
+        <tr><th scope="row">Quality</th><td>Default scalability: every group at Epic</td></tr>
+        <tr><th scope="row">Window</th><td>1280 by 720, windowed, capped at 30 fps</td></tr>
+        <tr><th scope="row">Date</th><td>November 2026</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Method</h2>
+    <p>
+      Each run launched the game, left the player standing at the start of the level with the default camera, and
+      quit by itself after 2100 frames, about 70 seconds:
+    </p>
+    <pre><code>UnrealEditor Project.uproject -game -windowed -resx=1280 -resy=720 -unattended \
+  -llmcsv -ExecCmds="t.MaxFPS 30" -csvCaptureFrames=2100 -ExitAfterCsvProfiling \
+  -csvExecCmds="900:memreport -full,1800:memreport -full"</code></pre>
+    <p>
+      That writes a memreport about 30 and 60 seconds in, LLM CSVs sampled once a second, and a CSV profile with
+      per-frame timings. <a href="/charts/capturing-memory-runs/">Capture memory runs you can compare</a> explains
+      the flags. A warm-up run came first, so shaders and the derived data cache were filled, and nothing else heavy ran
+      on the machine.
+    </p>
+    <p>
+      The four configurations ran interleaved, round by round, so drift over time hit all of them equally. The 16 GB
+      tier needed nothing extra, since a 16 GB Mac lands in its memory bucket on its own. The 12 and 8 GB tiers used <code>-MemBucket=3</code> and <code>-MemBucket=4</code>, which put the machine in the Smaller and Smallest
+      buckets. Every run's log was checked for the values its device profile pushed, so each configuration got the
+      settings it was meant to.
+    </p>
+    <p>
+      The full write-up, with every table, is <a href={SOUNDING_DOC}>in the repository</a>. To take your own,
+      the <a href="/soundings/">soundings page</a> says what to record, and an issue with your numbers is welcome.
+    </p>
+    <p><a href="/charts/salvage-trim/">How to use salvage trim</a> has the tiers, every setting and why.</p>
+  </div>
+</Page>
+<style>
+  .caveats {
+    max-width: 62rem;
+    margin: 0 0 var(--s-8);
+    padding: var(--s-5) 0 var(--s-5) var(--s-5);
+    border-left: 6px solid var(--crane-yellow);
+  }
+  .caveats h2 {
+    margin: 0 0 var(--s-4);
+    font-size: var(--step-3);
+  }
+  .caveats ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--s-4);
+    max-width: 48rem;
+  }
+  .caveats li {
+    line-height: 1.55;
+  }
+  /* Keep flags like -game whole instead of breaking at the hyphen. */
+  .caveats code,
+  .prose li code {
+    white-space: nowrap;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    margin-block: var(--s-5);
+  }
+  .numbers {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+  .numbers th,
+  .numbers td {
+    padding: var(--s-3) var(--s-3) var(--s-3) 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    text-align: left;
+  }
+  .numbers thead th {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--text);
+  }
+  .numbers tbody th {
+    font-weight: 600;
+    min-width: 9rem;
+    max-width: 16rem;
+  }
+  .numbers .num {
+    text-align: right;
+  }
+  .numbers td span {
+    display: block;
+    white-space: nowrap;
+  }
+  .numbers .v {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .numbers .d {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+  .numbers .r {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+  .setup th {
+    text-align: left;
+    padding-right: var(--s-4);
+    white-space: nowrap;
+  }
+</style>

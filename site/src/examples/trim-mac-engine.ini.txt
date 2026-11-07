@@ -1,0 +1,23 @@
+; >>> salvage trim: begin. Generated; remove with `salvage trim --undo`.
+; Memory buckets for desktop machines, so 16, 12 and 8 GB machines get their own tiers
+; (see Config/DefaultDeviceProfiles.ini). SmallestMemoryBucket_MinGB is deliberately left
+; unset: if it's set, the engine refuses to start on machines below it.
+; Epic's docs: https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-device-profiles-in-unreal-engine
+
+[PlatformMemoryBuckets]
+; 32 GB and up: the engine's top bucket, unchanged.
+LargestMemoryBucket_MinGB=32
+; 17 to 31 GB: no Salvage tier, so these machines keep stock settings.
+LargerMemoryBucket_MinGB=17
+; 14 to 16 GB: the 16 GB tier.
+DefaultMemoryBucket_MinGB=14
+; 10 to 13 GB: the 12 GB tier. Anything below is the 8 GB tier.
+SmallerMemoryBucket_MinGB=10
+
+[/Script/MacTargetPlatform.MacTargetSettings]
+; Audio stream cache: 32 MB instead of 64 MB. It holds compressed chunks of streamed sounds,
+; and half the size still keeps several seconds of many streams resident. Raise it if
+; streamed audio stutters. This is per platform, so it applies to every tier.
+; Epic's docs: https://dev.epicgames.com/documentation/en-us/unreal-engine/an-overview-of-audio-stream-caching-in-unreal-engine
+CacheSizeKB=32768
+; <<< salvage trim: end
