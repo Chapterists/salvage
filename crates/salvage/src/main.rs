@@ -5,6 +5,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use salvage::clangd;
+use salvage::crash;
 use salvage::doctor;
 use salvage::engine;
 use salvage::lldb;
@@ -108,6 +109,38 @@ enum Command {
     /// from source.
     #[command(subcommand)]
     Refit(RefitCommand),
+
+    /// Symbolicate an Unreal crash on a Mac, offline, and group repeat crashes.
+    ///
+    /// Reads an Unreal crash folder (Saved/Crashes/<id>), a macOS .ips report or
+    /// a .crash file, or a project's newest crash; matches each image to a dSYM
+    /// or binary by UUID and runs atos for function, file and line. Nothing is
+    /// uploaded anywhere: it only reads files on this machine.
+    #[command(args_conflicts_with_subcommands = true)]
+    Crash {
+        #[command(subcommand)]
+        command: Option<CrashCommand>,
+
+        /// A crash folder, an .ips or .crash file, or a project (its newest crash).
+        /// Defaults to the project in the current folder.
+        path: Option<PathBuf>,
+
+        /// Symbolicate every thread, not just the one that crashed.
+        #[arg(long)]
+        all_threads: bool,
+
+        /// More folders to search for dSYMs and binaries.
+        #[arg(long, value_name = "DIR")]
+        symbols: Vec<PathBuf>,
+
+        /// How many of your own frames make up the crash's signature.
+        #[arg(long, value_name = "N", default_value_t = 3)]
+        frames: usize,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Find every installed Xcode, judge each against your engine, and pin one.
     ///
@@ -308,6 +341,31 @@ enum RefitCommand {
 }
 
 #[derive(Subcommand)]
+enum CrashCommand {
+    /// List a project's crashes, grouped by signature, with counts and dates.
+    ///
+    /// Looks in the project's Saved/Crashes, the engine's Saved/Crashes for
+    /// crashes named after the project, and ~/Library/Logs/DiagnosticReports.
+    /// Nothing is uploaded anywhere.
+    List {
+        /// The project. Defaults to the .uproject in the current folder.
+        project: Option<PathBuf>,
+
+        /// More folders to search for dSYMs and binaries.
+        #[arg(long, value_name = "DIR")]
+        symbols: Vec<PathBuf>,
+
+        /// How many of your own frames make up a signature.
+        #[arg(long, value_name = "N", default_value_t = 3)]
+        frames: usize,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum LldbCommand {
     /// Make LLDB and Xcode show Unreal types (FString, TSharedPtr, TObjectPtr,
     /// FText, TOptional, FVector...) as values instead of raw memory.
@@ -343,6 +401,22 @@ fn main() -> ExitCode {
         } => run_soundings(&captures, targets, headroom, top, require, json),
         Command::Lldb(command) => run_lldb(command),
         Command::Refit(command) => run_refit(command),
+        Command::Crash {
+            command,
+            path,
+            all_threads,
+            symbols,
+            frames,
+            json,
+        } => match command {
+            Some(CrashCommand::List {
+                project,
+                symbols,
+                frames,
+                json,
+            }) => run_crash_list(project, symbols, frames, json),
+            None => run_crash(path, all_threads, symbols, frames, json),
+        },
         Command::Xcode {
             engine,
             project,
@@ -1361,6 +1435,247 @@ fn print_check(check: &refit::PackageCheck, json: bool) -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+const NOT_UPLOADED: &str = "Nothing was uploaded: salvage crash only reads files on this machine.";
+
+fn crash_project(path: Option<PathBuf>) -> Result<Project, String> {
+    match path {
+        Some(path) => Project::open(&path),
+        None => std::env::current_dir()
+            .ok()
+            .and_then(|d| Project::find_in(&d))
+            .ok_or_else(|| {
+                "no .uproject here; pass a crash folder, an .ips file or a project".to_string()
+            }),
+    }
+}
+
+fn run_crash(
+    path: Option<PathBuf>,
+    all_threads: bool,
+    symbols: Vec<PathBuf>,
+    frames: usize,
+    json: bool,
+) -> ExitCode {
+    let probe = SystemProbe;
+    // A project means its newest crash.
+    let target = match &path {
+        Some(p)
+            if p.is_file()
+                || p.join("CrashContext.runtime-xml").is_file()
+                || p.join("minidump.dmp").is_file() =>
+        {
+            p.clone()
+        }
+        other => match crash_project(other.clone()) {
+            Ok(project) => {
+                match crash::find_for_project(&project.dir, &project.name, probe.home().as_deref())
+                    .into_iter()
+                    .next()
+                {
+                    Some(newest) => newest,
+                    None => {
+                        let _ = writeln!(
+                            anstream::stdout(),
+                            "\n  No crashes found for {}.\n",
+                            project.name
+                        );
+                        return ExitCode::SUCCESS;
+                    }
+                }
+            }
+            Err(error) => return usage_error(&error),
+        },
+    };
+    let report = match crash::report::read(&target) {
+        Ok(report) => report,
+        Err(error) => return usage_error(&error),
+    };
+    let analysis = crash::analyze(&probe, &report, &symbols, all_threads, frames);
+    let mut out = anstream::stdout();
+    if json {
+        let mut value = serde_json::to_value(&analysis).unwrap_or_default();
+        value["command"] = serde_json::json!("crash");
+        value["uploaded"] = serde_json::json!(false);
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_default()
+        );
+        return ExitCode::SUCCESS;
+    }
+    let _ = write!(out, "{}", render_crash(&analysis));
+    ExitCode::SUCCESS
+}
+
+fn render_crash(a: &crash::Analysis) -> String {
+    let mut out = String::new();
+    let kind = match a.source {
+        crash::report::Source::Unreal => "Unreal crash folder",
+        crash::report::Source::Ips => "macOS crash report",
+        crash::report::Source::Text => "crash report",
+    };
+    out.push_str(&format!(
+        "\n  {}  {} {}\n",
+        paint(BOLD, "salvage crash"),
+        a.path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        paint(DIM, format!("({kind})"))
+    ));
+    let mut facts = Vec::new();
+    if let Some(p) = &a.process {
+        facts.push(p.clone());
+    }
+    if let Some(u) = &a.unreal {
+        let what = u.crash_type.clone().unwrap_or_else(|| "Crash".into());
+        facts.push(match &u.error_message {
+            Some(m) => format!("{what}: {}", m.lines().next().unwrap_or(m)),
+            None => what,
+        });
+    } else if let Some(e) = &a.exception {
+        facts.push(e.clone());
+    }
+    if let Some(t) = &a.time {
+        facts.push(t.clone());
+    }
+    out.push_str(&format!("  {}\n", facts.join(" · ")));
+    out.push_str(&format!(
+        "  Signature {}  {}\n",
+        paint(BOLD, &a.signature_id),
+        paint(DIM, a.signature.join("  ←  "))
+    ));
+    for thread in &a.threads {
+        let title = if thread.crashed {
+            "Crashed thread".to_string()
+        } else {
+            format!(
+                "Thread {}{}",
+                thread.index.map(|i| i.to_string()).unwrap_or_default(),
+                thread
+                    .name
+                    .as_ref()
+                    .map(|n| format!(" ({n})"))
+                    .unwrap_or_default()
+            )
+        };
+        out.push_str(&format!("\n  {}\n", paint(BOLD, title)));
+        for frame in &thread.frames {
+            let module = crash::bucket::module_label(&frame.module);
+            let place = match (&frame.file, frame.line) {
+                (Some(f), Some(l)) => format!("  {}", paint(GOOD, format!("{f}:{l}"))),
+                _ => String::new(),
+            };
+            let function = frame
+                .function
+                .clone()
+                .unwrap_or_else(|| paint(DIM, frame.address.clone()));
+            out.push_str(&format!(
+                "  {:>3}  {function}{place}  {}\n",
+                frame.index,
+                paint(DIM, &module)
+            ));
+        }
+    }
+    out.push_str(&format!("\n  {}\n", paint(BOLD, "Symbols")));
+    for image in &a.images {
+        let (mark, note) = match &image.symbols {
+            crash::symbols::Symbols::Dsym { .. }
+            | crash::symbols::Symbols::Binary { .. }
+            | crash::symbols::Symbols::UnrealSymbols { .. } => {
+                (paint(GOOD, "✓"), image.symbols.describe())
+            }
+            crash::symbols::Symbols::System | crash::symbols::Symbols::SharedCache { .. } => {
+                (paint(DIM, "·"), image.symbols.describe())
+            }
+            _ => (paint(WARN, "!"), image.symbols.describe()),
+        };
+        out.push_str(&format!(
+            "    {mark} {}  {}\n",
+            image.name,
+            paint(DIM, note)
+        ));
+    }
+    out.push_str(&format!("\n  {}\n\n", paint(DIM, NOT_UPLOADED)));
+    out
+}
+
+fn run_crash_list(
+    project: Option<PathBuf>,
+    symbols: Vec<PathBuf>,
+    frames: usize,
+    json: bool,
+) -> ExitCode {
+    let probe = SystemProbe;
+    let project = match crash_project(project) {
+        Ok(project) => project,
+        Err(error) => return usage_error(&error),
+    };
+    let paths = crash::find_for_project(&project.dir, &project.name, probe.home().as_deref());
+    let mut analyses = Vec::new();
+    let mut errors = Vec::new();
+    for path in &paths {
+        match crash::report::read(path) {
+            Ok(report) => analyses.push(crash::analyze(&probe, &report, &symbols, false, frames)),
+            Err(error) => errors.push(error),
+        }
+    }
+    let groups = crash::group(&analyses);
+    let mut out = anstream::stdout();
+    if json {
+        let value = serde_json::json!({ "command": "crash list", "project": project.name, "groups": groups, "errors": errors, "uploaded": false });
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_default()
+        );
+        return ExitCode::SUCCESS;
+    }
+    let _ = writeln!(
+        out,
+        "\n  {}  {}: {} crash{} in {} group{}",
+        paint(BOLD, "salvage crash list"),
+        project.name,
+        analyses.len(),
+        if analyses.len() == 1 { "" } else { "es" },
+        groups.len(),
+        if groups.len() == 1 { "" } else { "s" }
+    );
+    for group in &groups {
+        let dates = match (&group.first, &group.last) {
+            (Some(f), Some(l)) if f != l => format!("{f} to {l}"),
+            (Some(f), _) => f.clone(),
+            _ => String::new(),
+        };
+        let _ = writeln!(
+            out,
+            "\n  {} {:>3}×  {}  {}",
+            paint(BOLD, &group.signature_id),
+            group.count,
+            group.kinds.join(", "),
+            paint(DIM, dates)
+        );
+        for frame in &group.signature {
+            let _ = writeln!(out, "         {frame}");
+        }
+        if let Some(latest) = group.reports.first() {
+            let _ = writeln!(
+                out,
+                "         {}",
+                paint(
+                    DIM,
+                    format!("latest: salvage crash \"{}\"", latest.display())
+                )
+            );
+        }
+    }
+    for error in &errors {
+        let _ = writeln!(out, "  {} {error}", paint(WARN, "!"));
+    }
+    let _ = writeln!(out, "\n  {}\n", paint(DIM, NOT_UPLOADED));
+    ExitCode::SUCCESS
 }
 
 fn cwd_or_root() -> PathBuf {

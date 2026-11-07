@@ -39,6 +39,17 @@ salvage doctor --project ~/Projects/MyGame
 salvage doctor --json
 ```
 
+**`salvage crash`** symbolicates Unreal crashes on a Mac, offline. Give it an Unreal crash folder (`Saved/Crashes/<id>`), a macOS `.ips` report from `~/Library/Logs/DiagnosticReports`, a `.crash` file, or a project (its newest crash). It matches every image in the report to a dSYM or binary by UUID (Spotlight's dSYM index, the paths in the report, the engine and the project), runs `atos` for function, file and line, and says plainly which images have no symbols and why: a binary from a different build, or nothing on this machine. It also works around two gaps in what Unreal writes on a Mac: its crash report marks Unreal's own crash-handling thread as the one that crashed, and its symbolized call stack drops the frames it couldn't name, which are often your game's own. `--all-threads` shows every thread. Each crash gets a signature from its top frames in your own modules, skipping the engine's assert and crash plumbing, and `salvage crash list` groups a project's crashes by it, with counts and dates. **Nothing is uploaded**: it only reads files on this machine.
+
+```sh
+salvage crash                                   # the newest crash of the project in this folder
+salvage crash ~/Library/Logs/DiagnosticReports/MyGame-2026-01-01-120000.ips
+salvage crash "Saved/Crashes/CrashReport-UE-MyGame-pid-123-…" --all-threads
+salvage crash list                              # this project's crashes, grouped by signature
+```
+
+What it isn't: Unreal's CrashReportClient collects the crash folder and sends it to a crash-reporting server (Epic's, or one you set up), and hosted services such as [Sentry](https://sentry.io) and [BugSplat](https://www.bugsplat.com) receive those reports and symbolicate them for a team. `salvage crash` is for one machine and no server. The engine's UnrealAtoS looks up one address at a time from Unreal's `.udebugsymbols` files, which Unreal makes for iOS and tvOS builds; `salvage crash` calls it when a binary has one next to it, and uses `atos` with dSYMs otherwise. [docs/soundings/crash-symbolication-m4.md](docs/soundings/crash-symbolication-m4.md) shows it on real crashes.
+
 **`salvage xcode`** finds every installed Xcode (Spotlight, `/Applications`, `~/Applications`, and xcodes' list if you use it) and judges each against the engine you build with, using two sources: the Xcode range the engine's own `Apple_SDK.json` accepts, read from your install, and Epic's macOS requirements page, which is narrower and names versions that don't work (for UE 5.8: minimum 26.0, recommended 26.1.1, and "Xcode 26.4 is not compatible", although the engine's config accepts 15.2 to 27.9). Salvage keeps that page as a small table with the source and the date it was checked, and warns, rather than fails, about a version the config accepts but Epic warns against. It also checks that each Xcode has the Metal Toolchain and the Metal tools the engine's shader compiler runs, and shows what xcode-select and `DEVELOPER_DIR` point at. Then it prints the `DEVELOPER_DIR=...` to pin the right Xcode for that engine, per build, or writes a small wrapper script with `--wrapper`. It never runs sudo or changes xcode-select. Installing and switching Xcode is [xcodes](https://github.com/XcodesOrg/xcodes)' job: when no installed Xcode is right, Salvage prints the `xcodes install <version>` command to run. `salvage doctor` checks the active Xcode the same way and points here.
 
 ```sh

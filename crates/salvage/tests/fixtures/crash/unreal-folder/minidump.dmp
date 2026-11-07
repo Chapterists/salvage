@@ -1,0 +1,30 @@
+Incident Identifier: 11111111-2222-3333-4444-555555555555
+Hardware Model:      Mac00,0
+Process:         UnrealEditor [4242]
+Path:            /Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor
+Identifier:      UnrealEditor
+Code Type:       ARM-64
+Date/Time:       2026-01-02 03:04:05 AM +0000
+OS Version:      Mac OS X 99.1 (99A123)
+Report Version:  104
+
+Exception Type:  SIGUSR2
+Exception Codes: #0 at 0x180001000
+Crashed Thread:  7
+
+Thread 0:
+0   libsystem_kernel.dylib              0x0000000180001000 0x180000000 + 4096
+1   libUnrealEditor-Core.dylib          0x0000000106001200 0x106000000 + 4608
+
+Thread 7 Crashed:
+0   libsystem_kernel.dylib              0x0000000180001000 0x180000000 + 4096
+
+Thread 7 crashed with ARM-64 Thread State:
+    pc: 0x0000000180001000     fp: 0x0000000000000000
+
+Binary Images:
+       0x100000000 -        0x10000ffff +UnrealEditor arm64 (0.0.0 - 0.0.0) <aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1> /Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor
+       0x106000000 -        0x106ffffff  libUnrealEditor-Core.dylib arm64 (0.0.0 - 0.0.0) <aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2> /Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/libUnrealEditor-Core.dylib
+       0x180000000 -        0x18000ffff  libsystem_kernel.dylib arm64e (0.0.0 - 0.0.0) <bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb1> /usr/lib/system/libsystem_kernel.dylib
+       0x1d4b00000 -        0x1d4bfffff  CoreExample arm64e (0.0.0 - 0.0.0) <bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2> /System/Library/PrivateFrameworks/CoreExample.framework/Versions/A/CoreExample
+      0x70d4b00000 -       0x70d4b0ffff  libUnrealEditor-Harbor.dylib arm64 (0.0.0 - 0.0.0) <cccccccccccccccccccccccccccccc01> /Users/someone/Projects/Harbor/Binaries/Mac/libUnrealEditor-Harbor.dylib
