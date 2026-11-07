@@ -163,7 +163,8 @@ fn xcode_is_checked_against_the_engines_range() {
     let report = setup.run();
     assert_eq!(status(&report, "xcode"), Status::Fail);
     assert!(report.check("xcode").unwrap().summary.contains("newer"));
-    assert!(fix_command(&report, "xcode").contains("Xcode-30.1.0.app"));
+    // Pinned per build with salvage xcode, never sudo xcode-select.
+    assert_eq!(fix_command(&report, "xcode"), "salvage xcode");
 
     setup
         .probe
@@ -171,6 +172,43 @@ fn xcode_is_checked_against_the_engines_range() {
     let report = setup.run();
     assert_eq!(status(&report, "xcode"), Status::Fail);
     assert!(report.check("xcode").unwrap().summary.contains("older"));
+}
+
+#[test]
+fn xcode_epic_says_is_not_compatible_warns_inside_the_range() {
+    let mut setup = Setup::mac();
+    let root = fake_engine(&setup.dir.path().join("UE_5.8"), (5, 8, 4));
+    std::fs::write(
+        root.join("Engine/Config/Apple/Apple_SDK.json"),
+        r#"{ "MainVersion": "26.1.1", "MinVersion": "15.2.0", "MaxVersion": "27.9.0" }"#,
+    )
+    .unwrap();
+    setup.engine = Some(Engine::open(&root, FoundBy::Flag).unwrap());
+    setup
+        .probe
+        .ok("xcodebuild -version", "Xcode 26.4\nBuild version 17E1\n");
+    let report = setup.run();
+    let xcode = report.check("xcode").unwrap();
+    assert_eq!(xcode.status, Status::Warn, "a warning, not a failure");
+    assert!(
+        xcode
+            .details
+            .iter()
+            .any(|d| d.contains("26.4 is not compatible"))
+    );
+    assert_eq!(fix_command(&report, "xcode"), "salvage xcode");
+
+    setup
+        .probe
+        .ok("xcodebuild -version", "Xcode 26.1.1\nBuild version 17B1\n");
+    let xcode = setup.run().check("xcode").unwrap().clone();
+    assert_eq!(xcode.status, Status::Pass);
+    assert!(
+        xcode
+            .details
+            .iter()
+            .any(|d| d.contains("Epic recommends Xcode 26.1.1"))
+    );
 }
 
 #[test]
