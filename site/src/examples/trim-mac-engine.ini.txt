@@ -17,7 +17,8 @@ SmallerMemoryBucket_MinGB=10
 [/Script/MacTargetPlatform.MacTargetSettings]
 ; Audio stream cache: 32 MB instead of 64 MB. It holds compressed chunks of streamed sounds,
 ; and half the size still keeps several seconds of many streams resident. Raise it if
-; streamed audio stutters. This is per platform, so it applies to every tier.
+; streamed audio stutters. It's set per platform, not per tier, so it applies on every
+; machine, including those over 16 GB that get no tier.
 ; Epic's docs: https://dev.epicgames.com/documentation/en-us/unreal-engine/an-overview-of-audio-stream-caching-in-unreal-engine
 CacheSizeKB=32768
 ; <<< salvage trim: end

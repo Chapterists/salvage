@@ -5,3 +5,5 @@
   ~ Would write Config/Windows/WindowsEngine.ini
   ~ Would write Config/Linux/LinuxEngine.ini
 
+  The tiers apply on 8, 12 and 16 GB machines. The smaller audio stream cache is set
+  per platform, so it applies on every machine, including those over 16 GB.

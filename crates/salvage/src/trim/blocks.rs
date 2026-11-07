@@ -7,6 +7,32 @@ use crate::fsutil::{Written, back_up, resolve, write_atomically};
 pub const BEGIN: &str = "; >>> salvage trim: begin. Generated; remove with `salvage trim --undo`.";
 pub const END: &str = "; <<< salvage trim: end";
 
+/// Added to the begin line when Salvage put line breaks before its block, so
+/// undo takes out exactly those and leaves the file as it was, byte for byte.
+const ADDED_ONE: &str = " Salvage added the blank line above.";
+const ADDED_TWO: &str = " Salvage added the line break and the blank line above.";
+
+/// How many line breaks Salvage added before the block that starts `block`.
+fn added_before(block: &str) -> usize {
+    let first = block.lines().next().unwrap_or("");
+    if first.ends_with(ADDED_TWO) {
+        2
+    } else if first.ends_with(ADDED_ONE) {
+        1
+    } else {
+        0
+    }
+}
+
+fn block_text(body: &str, added: usize) -> String {
+    let note = match added {
+        2 => ADDED_TWO,
+        1 => ADDED_ONE,
+        _ => "",
+    };
+    format!("{BEGIN}{note}\n{body}{END}\n")
+}
+
 /// Splits `text` into (before, block, after) around Salvage's block, if any.
 fn split(text: &str) -> Option<(&str, &str, &str)> {
     let start = text.find(BEGIN)?;
@@ -40,33 +66,32 @@ fn read(file: &Path) -> Result<Option<String>, String> {
 }
 
 /// The text of a file once `body` is between the markers: an existing block
-/// is replaced in place, otherwise one is appended.
+/// is replaced in place, otherwise one is appended after a blank line.
 fn with_block(existing: Option<&str>, body: &str) -> String {
-    let block = format!("{BEGIN}\n{body}{END}\n");
     match existing.map(|t| (t, split(t))) {
-        Some((_, Some((before, _, after)))) => format!("{before}{block}{after}"),
-        Some(("", None)) | None => block,
+        Some((_, Some((before, block, after)))) => {
+            format!("{before}{}{after}", block_text(body, added_before(block)))
+        }
+        Some(("", None)) | None => block_text(body, 0),
         Some((text, None)) => {
-            let separator = if text.ends_with("\n\n") {
-                ""
+            let added = if text.ends_with("\n\n") {
+                0
             } else if text.ends_with('\n') {
-                "\n"
+                1
             } else {
-                "\n\n"
+                2
             };
-            format!("{text}{separator}{block}")
+            format!("{text}{}{}", "\n".repeat(added), block_text(body, added))
         }
     }
 }
 
 /// The text of a file with Salvage's block taken out, or None if it has none.
 fn without_block(text: &str) -> Option<String> {
-    let (before, _, after) = split(text)?;
-    // Drop the blank line upsert put before the block.
-    let before = before
-        .strip_suffix("\n\n")
-        .map(|b| format!("{b}\n"))
-        .unwrap_or_else(|| before.to_string());
+    let (before, block, after) = split(text)?;
+    // Take out the line breaks Salvage added before the block, and no others.
+    let added = "\n".repeat(added_before(block));
+    let before = before.strip_suffix(added.as_str()).unwrap_or(before);
     Some(format!("{before}{after}"))
 }
 

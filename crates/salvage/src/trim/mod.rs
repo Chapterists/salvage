@@ -19,6 +19,10 @@ use crate::project::Project;
 pub use blocks::{BEGIN, Change, END, remove_block, upsert_block};
 pub use values::{EDITOR_TIERS, GAME_TIERS, Setting, Tier};
 
+/// Which machines get what, for the command's output: the tiers are per
+/// machine size, the audio stream cache is per platform.
+pub const SCOPE: &str = "The tiers apply on 8, 12 and 16 GB machines. The smaller audio stream cache is set\n  per platform, so it applies on every machine, including those over 16 GB.";
+
 /// Desktop platforms Salvage writes tiers for: (device profile, platform
 /// folder, target settings section).
 pub const PLATFORMS: [(&str, &str, &str); 3] = [
@@ -234,7 +238,8 @@ fn platform_engine(target_section: &str) -> String {
     text.push_str(
         "; Audio stream cache: 32 MB instead of 64 MB. It holds compressed chunks of streamed sounds,\n\
          ; and half the size still keeps several seconds of many streams resident. Raise it if\n\
-         ; streamed audio stutters. This is per platform, so it applies to every tier.\n\
+         ; streamed audio stutters. It's set per platform, not per tier, so it applies on every\n\
+         ; machine, including those over 16 GB that get no tier.\n\
          ; Epic's docs: https://dev.epicgames.com/documentation/en-us/unreal-engine/an-overview-of-audio-stream-caching-in-unreal-engine\n\
          CacheSizeKB=32768\n",
     );
