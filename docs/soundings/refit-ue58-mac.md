@@ -96,7 +96,7 @@ LogPython: REFIT: asset /Game/PSD/Boat_Layers/T_Boat_Background_0.T_Boat_Backgro
 LogPython: REFIT: asset /Game/PSD/Boat_Layers/T_Boat_Square_1.T_Boat_Square_1 class Texture2D
 ```
 
-The import ran from a Python script (`-ExecutePythonScript`) with the editor in unattended mode; nobody clicked through the editor's UI, and only the document asset was saved to disk. The quad actors and layered materials PSDImporter can build from a document weren't tried.
+The editor log ends with a normal shutdown, but the process then caught a signal during its final teardown and exited with code 1. It does the same with PSDImporter disabled (the same project quitting from a one-line Python script), so that's the scripted quit path in this engine build, not the plugin. The import ran from a Python script (`-ExecutePythonScript`) with the editor in unattended mode; nobody clicked through the editor's UI, and only the document asset was saved to disk. The quad actors and layered materials PSDImporter can build from a document weren't tried.
 
 ### What's left for a real port
 
