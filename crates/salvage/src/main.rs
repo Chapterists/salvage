@@ -11,6 +11,7 @@ use salvage::lldb;
 use salvage::probe::Probe;
 use salvage::probe::SystemProbe;
 use salvage::project::Project;
+use salvage::refit;
 use salvage::soundings::{self, Sounding};
 use salvage::trim;
 use salvage::ui::{self, BAD, BOLD, DIM, GOOD, WARN, paint};
@@ -101,6 +102,12 @@ enum Command {
     #[command(subcommand)]
     Lldb(LldbCommand),
 
+    /// Get Windows-only Unreal plugins running on a Mac: find out why a
+    /// plugin doesn't load, let Mac through its allow lists, and rebuild it
+    /// from source.
+    #[command(subcommand)]
+    Refit(RefitCommand),
+
     /// Write memory tiers for 8, 12 and 16 GB machines into a project's config.
     ///
     /// Adds marked blocks to the project's Config files (backing each file up
@@ -169,6 +176,111 @@ enum Command {
 }
 
 #[derive(Subcommand)]
+enum RefitCommand {
+    /// Report, per plugin, whether it works on Mac and what stands in the way.
+    ///
+    /// Scans the folders given (a plugin, or a folder of plugins), or the
+    /// project's Plugins folder. Checks Mac binaries, allow lists, prebuilt
+    /// Windows-only libraries, Windows API use in the source, and missing source.
+    Scan {
+        /// Plugin folders, .uplugin files or folders of plugins.
+        paths: Vec<PathBuf>,
+
+        /// Project whose Plugins folder to scan when no paths are given.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+
+        /// Also scan the engine's plugins (Engine/Plugins, including Fab and
+        /// Marketplace plugins installed there).
+        #[arg(long)]
+        engine_plugins: bool,
+
+        /// Engine to use with --engine-plugins. Defaults to the project's, then
+        /// the newest installed.
+        #[arg(long, value_name = "PATH", env = "SALVAGE_ENGINE")]
+        engine: Option<PathBuf>,
+
+        /// Show what stands in each plugin's way, not just its verdict.
+        #[arg(long)]
+        details: bool,
+
+        /// List plugins that already work too.
+        #[arg(long)]
+        all: bool,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Add Mac to a plugin's allow lists, on a copy inside the project.
+    ///
+    /// A plugin outside the project (in the engine, say) is copied into the
+    /// project's Plugins folder first; Salvage never edits an engine install.
+    /// The .uplugin is backed up and --undo puts it back exactly.
+    Patch {
+        /// The plugin: its folder or its .uplugin.
+        plugin: PathBuf,
+
+        /// The project to put the patched plugin in. Defaults to the
+        /// .uproject in the current folder.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+
+        /// Put the .uplugin back. A copy Salvage made is removed if nothing
+        /// but build output changed in it.
+        #[arg(long, conflicts_with = "dry_run")]
+        undo: bool,
+
+        /// Show what would change, and change nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Build a plugin for Mac with BuildPlugin, then check the binaries.
+    ///
+    /// Runs RunUAT BuildPlugin -TargetPlatforms=Mac into a package folder and
+    /// checks that every module came out as a Mac binary: a plugin whose
+    /// allow lists leave Mac out "builds" without compiling anything.
+    Build {
+        /// The plugin: its folder or its .uplugin.
+        plugin: PathBuf,
+
+        /// Where to write the package. Defaults to Saved/Refit/<Plugin> in the
+        /// plugin's project.
+        #[arg(long, value_name = "DIR")]
+        out: Option<PathBuf>,
+
+        /// Copy the Mac binaries into the plugin folder afterwards, so the
+        /// project's editor loads them.
+        #[arg(long)]
+        install: bool,
+
+        /// Engine to build with. Defaults to the project's, then the newest installed.
+        #[arg(long, value_name = "PATH", env = "SALVAGE_ENGINE")]
+        engine: Option<PathBuf>,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Check a plugin package for Mac binaries, without building.
+    Check {
+        /// The package folder BuildPlugin wrote.
+        package: PathBuf,
+
+        /// The build log, to check that files were compiled.
+        #[arg(long, value_name = "FILE")]
+        log: Option<PathBuf>,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum LldbCommand {
     /// Make LLDB and Xcode show Unreal types (FString, TSharedPtr, TObjectPtr,
     /// FText, TOptional, FVector...) as values instead of raw memory.
@@ -203,6 +315,7 @@ fn main() -> ExitCode {
             json,
         } => run_soundings(&captures, targets, headroom, top, require, json),
         Command::Lldb(command) => run_lldb(command),
+        Command::Refit(command) => run_refit(command),
         Command::Trim {
             project,
             editor,
@@ -742,6 +855,417 @@ fn run_clangd(args: ClangdArgs) -> ExitCode {
         "\n  Open the project folder in an editor with clangd. Run `salvage clangd --refresh`\n  after adding source files or changing Build.cs files.\n"
     );
     ExitCode::SUCCESS
+}
+
+fn run_refit(command: RefitCommand) -> ExitCode {
+    match command {
+        RefitCommand::Scan {
+            paths,
+            project,
+            engine_plugins,
+            engine,
+            details,
+            all,
+            json,
+        } => refit_scan(paths, project, engine_plugins, engine, details, all, json),
+        RefitCommand::Patch {
+            plugin,
+            project,
+            undo,
+            dry_run,
+        } => refit_patch(plugin, project, undo, dry_run),
+        RefitCommand::Build {
+            plugin,
+            out,
+            install,
+            engine,
+            json,
+        } => refit_build(plugin, out, install, engine, json),
+        RefitCommand::Check { package, log, json } => {
+            let log = match log.map(|l| {
+                std::fs::read_to_string(&l).map_err(|e| format!("can't read {}: {e}", l.display()))
+            }) {
+                Some(Err(error)) => return usage_error(&error),
+                Some(Ok(text)) => Some(text),
+                None => None,
+            };
+            match refit::check(&package, log.as_deref()) {
+                Ok(check) => print_check(&check, json),
+                Err(error) => usage_error(&error),
+            }
+        }
+    }
+}
+
+/// A plugin argument (folder or .uplugin) as its .uplugin.
+fn plugin_file(path: &std::path::Path) -> Result<PathBuf, String> {
+    if path.is_file() {
+        return Ok(path.to_path_buf());
+    }
+    refit::scan::uplugin_in(path).ok_or_else(|| format!("no .uplugin in {}", path.display()))
+}
+
+fn project_or_here(project: Option<PathBuf>) -> Result<Project, String> {
+    match project {
+        Some(path) => Project::open(&path),
+        None => std::env::current_dir()
+            .ok()
+            .and_then(|dir| Project::find_in(&dir))
+            .ok_or_else(|| {
+                "no .uproject here; run this in a project folder or pass --project".to_string()
+            }),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn refit_scan(
+    paths: Vec<PathBuf>,
+    project: Option<PathBuf>,
+    engine_plugins: bool,
+    engine: Option<PathBuf>,
+    details: bool,
+    all: bool,
+    json: bool,
+) -> ExitCode {
+    let mut roots = paths;
+    let project = match &project {
+        Some(path) => match Project::open(path) {
+            Ok(project) => Some(project),
+            Err(error) => return usage_error(&error),
+        },
+        None => std::env::current_dir()
+            .ok()
+            .and_then(|d| Project::find_in(&d)),
+    };
+    if roots.is_empty() && !engine_plugins {
+        match &project {
+            Some(project) => roots.push(project.dir.join("Plugins")),
+            None => {
+                return usage_error(
+                    "nothing to scan: give plugin folders, run this in a project, or pass --engine-plugins",
+                );
+            }
+        }
+    }
+    if engine_plugins {
+        match engine::discover(engine.as_deref(), project.as_ref(), &SystemProbe) {
+            Ok(Some(engine)) => roots.push(engine.root.join("Engine/Plugins")),
+            Ok(None) => {
+                return usage_error("couldn't find an Unreal Engine install; pass --engine <path>");
+            }
+            Err(error) => return usage_error(&error),
+        }
+    }
+    for root in &roots {
+        if !root.exists() {
+            return usage_error(&format!("{} doesn't exist", root.display()));
+        }
+    }
+    let single = roots.len() == 1 && refit::scan::uplugin_in(&roots[0]).is_some()
+        || roots.len() == 1 && roots[0].is_file();
+    let roots: Vec<PathBuf> = roots
+        .into_iter()
+        .map(|r| {
+            if r.is_file() {
+                r.parent().map(|p| p.to_path_buf()).unwrap_or(r)
+            } else {
+                r
+            }
+        })
+        .collect();
+    let (plugins, errors) = refit::scan_roots(&roots, single);
+    let mut out = anstream::stdout();
+    if json {
+        let value =
+            serde_json::json!({ "command": "refit scan", "plugins": plugins, "errors": errors });
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_default()
+        );
+    } else {
+        let refs: Vec<&std::path::Path> = roots.iter().map(PathBuf::as_path).collect();
+        let _ = write!(
+            out,
+            "{}",
+            refit::render::scan(&plugins, &refs, details || single, all || single)
+        );
+        for error in &errors {
+            let _ = writeln!(out, "  {} {error}", paint(WARN, "!"));
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+fn refit_patch(plugin: PathBuf, project: Option<PathBuf>, undo: bool, dry_run: bool) -> ExitCode {
+    let mut out = anstream::stdout();
+    if undo {
+        let dir = if plugin.is_file() {
+            plugin.parent().map(|p| p.to_path_buf()).unwrap_or(plugin)
+        } else {
+            plugin
+        };
+        // Undo works on the patched copy: given the original, look for its copy in the project.
+        let dir = if dir.join(refit::patch::RECORD).exists() {
+            dir
+        } else {
+            match project_or_here(project) {
+                Ok(project) => refit::patch::destination(&dir, &project.dir),
+                Err(_) => dir,
+            }
+        };
+        return match refit::undo(&dir) {
+            Ok(refit::Undone::NotPatched) => {
+                let _ = writeln!(
+                    out,
+                    "\n  Nothing to undo: salvage refit hasn't patched {}.\n",
+                    dir.display()
+                );
+                ExitCode::SUCCESS
+            }
+            Ok(refit::Undone::Restored) => {
+                let _ = writeln!(
+                    out,
+                    "\n  {} Put {} back as it was.\n",
+                    paint(GOOD, "✓"),
+                    dir.display()
+                );
+                ExitCode::SUCCESS
+            }
+            Ok(refit::Undone::RemovedCopy) => {
+                let _ = writeln!(
+                    out,
+                    "\n  {} Removed {} (Salvage's copy; nothing in it had changed).\n",
+                    paint(GOOD, "✓"),
+                    dir.display()
+                );
+                ExitCode::SUCCESS
+            }
+            Ok(refit::Undone::RestoredKeptCopy { changed }) => {
+                let _ = writeln!(
+                    out,
+                    "\n  {} Put the .uplugin in {} back. The copy stays, because these changed in it: {}\n",
+                    paint(GOOD, "✓"),
+                    dir.display(),
+                    changed
+                        .iter()
+                        .take(5)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                let _ = writeln!(anstream::stderr(), "{} {error}", paint(BAD, "salvage:"));
+                ExitCode::FAILURE
+            }
+        };
+    }
+    let project = match project_or_here(project) {
+        Ok(project) => project,
+        Err(error) => return usage_error(&error),
+    };
+    let file = match plugin_file(&plugin) {
+        Ok(file) => file,
+        Err(error) => return usage_error(&error),
+    };
+    if refit::inside_engine(&project.dir) {
+        return usage_error(
+            "the project is inside an engine tree; Salvage doesn't edit engine installs",
+        );
+    }
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    match refit::patch(&file, &project.dir, stamp, dry_run) {
+        Ok(patched) => {
+            let _ = writeln!(
+                out,
+                "\n  {}  {}{}",
+                paint(BOLD, "salvage refit patch"),
+                patched.dir.display(),
+                if dry_run {
+                    paint(DIM, " (dry run: nothing is changed)")
+                } else {
+                    String::new()
+                }
+            );
+            if patched.changes.is_empty() {
+                let _ = writeln!(out, "  Nothing to change: no allow list leaves Mac out.\n");
+                return ExitCode::SUCCESS;
+            }
+            if let Some(from) = &patched.copied_from {
+                let verb = if dry_run { "Would copy" } else { "Copied" };
+                let _ = writeln!(
+                    out,
+                    "  {} {verb} the plugin from {}",
+                    paint(GOOD, "✓"),
+                    from.display()
+                );
+            }
+            for change in &patched.changes {
+                let _ = writeln!(out, "  {} {change}", paint(GOOD, "✓"));
+            }
+            if let Some(backup) = &patched.backup {
+                let _ = writeln!(
+                    out,
+                    "  {}",
+                    paint(DIM, format!("Backup: {}", backup.display()))
+                );
+            }
+            let _ = writeln!(
+                out,
+                "\n  Next: salvage refit build {}. `salvage refit patch --undo` puts it back.\n",
+                patched.dir.display()
+            );
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            let _ = writeln!(anstream::stderr(), "{} {error}", paint(BAD, "salvage:"));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn refit_build(
+    plugin: PathBuf,
+    out_dir: Option<PathBuf>,
+    install: bool,
+    engine: Option<PathBuf>,
+    json: bool,
+) -> ExitCode {
+    let file = match plugin_file(&plugin) {
+        Ok(file) => file,
+        Err(error) => return usage_error(&error),
+    };
+    let plugin_dir = file.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    let name = file
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let project = plugin_dir.ancestors().find_map(Project::find_in);
+    let engine = match engine::discover(engine.as_deref(), project.as_ref(), &SystemProbe) {
+        Ok(Some(engine)) => engine,
+        Ok(None) => {
+            return usage_error("couldn't find an Unreal Engine install; pass --engine <path>");
+        }
+        Err(error) => return usage_error(&error),
+    };
+    let package = match out_dir.or_else(|| {
+        project
+            .as_ref()
+            .map(|p| p.dir.join("Saved/Refit").join(&name))
+    }) {
+        Some(dir) => dir,
+        None => return usage_error("the plugin isn't in a project; pass --out <dir>"),
+    };
+    if package.starts_with(&plugin_dir) {
+        return usage_error("--out can't be inside the plugin folder");
+    }
+    if package.exists() {
+        if refit::scan::uplugin_in(&package).is_none()
+            && std::fs::read_dir(&package).is_ok_and(|mut d| d.next().is_some())
+        {
+            return usage_error(&format!(
+                "{} isn't empty and isn't an earlier package; pick another --out",
+                package.display()
+            ));
+        }
+        if let Err(e) = std::fs::remove_dir_all(&package) {
+            return usage_error(&format!("can't clear {}: {e}", package.display()));
+        }
+    }
+    let log_path = package.with_extension("log");
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let (uat, args) = refit::package::build_command(&engine.root, &file, &package);
+    let mut out = anstream::stdout();
+    if !json {
+        let _ = writeln!(
+            out,
+            "\n  {}  {} with {}\n  Building for Mac; this takes a few minutes. Log: {}",
+            paint(BOLD, "salvage refit build"),
+            name,
+            engine.label(),
+            log_path.display()
+        );
+        let _ = out.flush();
+    }
+    let log_file = match std::fs::File::create(&log_path) {
+        Ok(f) => f,
+        Err(e) => return usage_error(&format!("can't write {}: {e}", log_path.display())),
+    };
+    let status = std::process::Command::new(&uat)
+        .args(&args)
+        .stdout(
+            log_file
+                .try_clone()
+                .map(std::process::Stdio::from)
+                .unwrap_or(std::process::Stdio::null()),
+        )
+        .stderr(std::process::Stdio::from(log_file))
+        .status();
+    let log = std::fs::read_to_string(&log_path).unwrap_or_default();
+    let status = match status {
+        Ok(status) => status,
+        Err(e) => return usage_error(&format!("can't run {}: {e}", uat.display())),
+    };
+    if !status.success() {
+        let tail: Vec<&str> = log
+            .lines()
+            .filter(|l| l.contains("error"))
+            .take(12)
+            .collect();
+        let _ = writeln!(
+            anstream::stderr(),
+            "{} BuildPlugin failed. From the log:\n{}",
+            paint(BAD, "salvage:"),
+            tail.join("\n")
+        );
+        return ExitCode::FAILURE;
+    }
+    let check = match refit::check(&package, Some(&log)) {
+        Ok(check) => check,
+        Err(error) => return usage_error(&error),
+    };
+    let code = print_check(&check, json);
+    if check.ok() && install {
+        match refit::install_binaries(&package, &plugin_dir) {
+            Ok(to) => {
+                if !json {
+                    let _ = writeln!(
+                        out,
+                        "  {} Installed the Mac binaries in {}\n",
+                        paint(GOOD, "✓"),
+                        to.display()
+                    );
+                }
+            }
+            Err(error) => return usage_error(&error),
+        }
+    }
+    code
+}
+
+fn print_check(check: &refit::PackageCheck, json: bool) -> ExitCode {
+    let mut out = anstream::stdout();
+    if json {
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(check).unwrap_or_default()
+        );
+    } else {
+        let _ = write!(out, "{}", refit::render::package(check));
+    }
+    if check.ok() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }
 
 fn usage_error(message: &str) -> ExitCode {
