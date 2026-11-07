@@ -15,6 +15,7 @@ use salvage::refit;
 use salvage::soundings::{self, Sounding};
 use salvage::trim;
 use salvage::ui::{self, BAD, BOLD, DIM, GOOD, WARN, paint};
+use salvage::xcode;
 
 /// `0.1.0 (1a2b3c4d5e6f)`: the crate version and the commit it was built from.
 const VERSION: &str = if env!("SALVAGE_COMMIT").is_empty() {
@@ -107,6 +108,32 @@ enum Command {
     /// from source.
     #[command(subcommand)]
     Refit(RefitCommand),
+
+    /// Find every installed Xcode, judge each against your engine, and pin one.
+    ///
+    /// Combines the engine's own Apple SDK range with Epic's documented
+    /// recommended and not-compatible versions, checks each Xcode's Metal
+    /// tools, and prints the DEVELOPER_DIR to pin for this engine. It never
+    /// installs Xcode, runs sudo or changes xcode-select: for installing it
+    /// hands off to xcodes.
+    Xcode {
+        /// Engine to judge against. Defaults to the project's, then the newest installed.
+        #[arg(long, value_name = "PATH", env = "SALVAGE_ENGINE")]
+        engine: Option<PathBuf>,
+
+        /// Project whose engine to use. Defaults to the .uproject in the current folder.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+
+        /// Also write a small script that runs any command with the picked
+        /// Xcode pinned, e.g. `./ue-xcode .../RunUAT.sh BuildCookRun ...`.
+        #[arg(long, value_name = "FILE")]
+        wrapper: Option<PathBuf>,
+
+        /// Print machine-readable JSON instead.
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Write memory tiers for 8, 12 and 16 GB machines into a project's config.
     ///
@@ -316,6 +343,12 @@ fn main() -> ExitCode {
         } => run_soundings(&captures, targets, headroom, top, require, json),
         Command::Lldb(command) => run_lldb(command),
         Command::Refit(command) => run_refit(command),
+        Command::Xcode {
+            engine,
+            project,
+            wrapper,
+            json,
+        } => run_xcode(engine, project, wrapper, json),
         Command::Trim {
             project,
             editor,
@@ -1332,6 +1365,299 @@ fn print_check(check: &refit::PackageCheck, json: bool) -> ExitCode {
 
 fn cwd_or_root() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"))
+}
+
+fn run_xcode(
+    engine: Option<PathBuf>,
+    project: Option<PathBuf>,
+    wrapper: Option<PathBuf>,
+    json: bool,
+) -> ExitCode {
+    let probe = SystemProbe;
+    if probe.os() != salvage::probe::Os::Macos {
+        return usage_error("salvage xcode is for macOS");
+    }
+    let project = match project {
+        Some(path) => match Project::open(&path) {
+            Ok(project) => Some(project),
+            Err(error) => return usage_error(&error),
+        },
+        None => std::env::current_dir()
+            .ok()
+            .and_then(|d| Project::find_in(&d)),
+    };
+    let engine = match engine::discover(engine.as_deref(), project.as_ref(), &probe) {
+        Ok(engine) => engine,
+        Err(error) => return usage_error(&error),
+    };
+    let home = probe.home();
+    let mut app_dirs = vec![PathBuf::from("/Applications")];
+    if let Some(home) = &home {
+        app_dirs.push(home.join("Applications"));
+    }
+    let report = xcode::report(&probe, engine.as_ref(), &app_dirs);
+    let mut out = anstream::stdout();
+    let picked = report
+        .pick
+        .as_ref()
+        .and_then(|app| report.installed.iter().find(|i| &i.app == app));
+    if let (Some(path), Some(picked)) = (&wrapper, picked) {
+        if path.exists()
+            && !std::fs::read_to_string(path).is_ok_and(|t| t.contains(xcode::WRAPPER_MARK))
+        {
+            return usage_error(&format!(
+                "{} exists and isn't a salvage xcode wrapper; pick another path",
+                path.display()
+            ));
+        }
+        let script = xcode::wrapper_script(&picked.developer_dir, report.engine.as_deref());
+        if let Err(e) = std::fs::write(path, script) {
+            return usage_error(&format!("can't write {}: {e}", path.display()));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755));
+        }
+    }
+    if json {
+        let mut value = serde_json::to_value(&report).unwrap_or_default();
+        value["command"] = serde_json::json!("xcode");
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_default()
+        );
+        return if picked.is_some() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        };
+    }
+
+    let _ = writeln!(
+        out,
+        "\n  {}  {}",
+        paint(BOLD, "salvage xcode"),
+        report
+            .engine
+            .as_deref()
+            .map(|e| format!("for {e}"))
+            .unwrap_or_else(|| "(no engine found; pass --engine)".into())
+    );
+    if let Some(range) = &report.engine_range {
+        let main = range
+            .main
+            .as_ref()
+            .map(|m| format!("; Epic builds it with {m}"))
+            .unwrap_or_default();
+        let _ = writeln!(
+            out,
+            "  The engine's build check accepts Xcode {} to {}{main}.",
+            range.min, range.max
+        );
+    } else if let Some(error) = &report.engine_range_error {
+        let _ = writeln!(
+            out,
+            "  {} Couldn't read the engine's Xcode range: {error}",
+            paint(WARN, "!")
+        );
+    }
+    if let Some(epic) = &report.epic {
+        let bad = if epic.not_compatible.is_empty() {
+            String::new()
+        } else {
+            format!("; not compatible: Xcode {}", epic.not_compatible.join(", "))
+        };
+        let _ = writeln!(
+            out,
+            "  Epic's macOS requirements for {}: minimum Xcode {}, recommended {}{bad}.\n  {}",
+            epic.engines,
+            epic.minimum,
+            epic.recommended,
+            paint(DIM, format!("{} (checked {})", epic.source, epic.checked))
+        );
+    }
+
+    let _ = writeln!(out, "\n  {}", paint(BOLD, "Installed"));
+    if report.installed.is_empty() {
+        let _ = writeln!(
+            out,
+            "    {} No Xcode found (Spotlight, /Applications, ~/Applications, xcodes).",
+            paint(BAD, "✗")
+        );
+    }
+    let same = |a: &std::path::Path, b: &std::path::Path| {
+        std::fs::canonicalize(a).unwrap_or_else(|_| a.to_path_buf())
+            == std::fs::canonicalize(b).unwrap_or_else(|_| b.to_path_buf())
+    };
+    for installed in &report.installed {
+        let mark = match installed.judgement.verdict {
+            xcode::Verdict::Recommended | xcode::Verdict::Supported => paint(GOOD, "✓"),
+            xcode::Verdict::Newer => paint(GOOD, "~"),
+            xcode::Verdict::BelowEpicMinimum
+            | xcode::Verdict::NotCompatible
+            | xcode::Verdict::Unknown => paint(WARN, "!"),
+            xcode::Verdict::OutsideRange => paint(BAD, "✗"),
+        };
+        let version = installed
+            .version
+            .as_ref()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "?".into());
+        let build = installed
+            .build
+            .as_ref()
+            .map(|b| format!(" ({b})"))
+            .unwrap_or_default();
+        let mut tags = Vec::new();
+        if report
+            .xcode_select
+            .as_ref()
+            .is_some_and(|d| same(d, &installed.developer_dir))
+        {
+            tags.push("xcode-select");
+        }
+        if report
+            .developer_dir_env
+            .as_ref()
+            .is_some_and(|d| same(std::path::Path::new(d), &installed.developer_dir))
+        {
+            tags.push("DEVELOPER_DIR");
+        }
+        if report.pick.as_ref() == Some(&installed.app) {
+            tags.push("pick for this engine");
+        }
+        let tags = if tags.is_empty() {
+            String::new()
+        } else {
+            format!("  ← {}", tags.join(", "))
+        };
+        let _ = writeln!(
+            out,
+            "    {mark} Xcode {version}{build}  {}{}",
+            paint(DIM, installed.app.display().to_string()),
+            tags
+        );
+        for reason in &installed.judgement.reasons {
+            let _ = writeln!(out, "        {reason}");
+        }
+        if !installed.metal_toolchain {
+            let _ = writeln!(
+                out,
+                "        {} The Metal Toolchain isn't installed for it, so shaders can't compile:\n          DEVELOPER_DIR={} xcodebuild -downloadComponent MetalToolchain",
+                paint(WARN, "!"),
+                installed.developer_dir.display()
+            );
+        } else if !installed.missing_metal_tools.is_empty() {
+            let _ = writeln!(
+                out,
+                "        {} xcrun can't find {}, which the engine's Metal shader compiler runs.",
+                paint(WARN, "!"),
+                installed.missing_metal_tools.join(", ")
+            );
+        }
+    }
+
+    let source = if report.developer_dir_env.is_some() {
+        "DEVELOPER_DIR"
+    } else {
+        "xcode-select"
+    };
+    match &report.active {
+        Some(active) => {
+            let _ = writeln!(
+                out,
+                "\n  Builds from this shell use {} ({source}).",
+                active.display()
+            );
+        }
+        None => {
+            let _ = writeln!(
+                out,
+                "\n  {} Neither xcode-select nor DEVELOPER_DIR points at an Xcode.",
+                paint(BAD, "✗")
+            );
+        }
+    }
+
+    if let Some(picked) = picked {
+        let dir = picked.developer_dir.display();
+        let already = report
+            .active
+            .as_ref()
+            .is_some_and(|a| same(a, &picked.developer_dir));
+        let _ = writeln!(
+            out,
+            "\n  {}\n    export DEVELOPER_DIR=\"{dir}\"\n  or for one command:\n    DEVELOPER_DIR=\"{dir}\" \"{}\" ...",
+            if already {
+                "Builds already use it. To keep this engine on it whatever xcode-select says, pin it per build:"
+            } else {
+                "Pin it for this engine, per build, without touching xcode-select:"
+            },
+            report
+                .engine_root
+                .as_ref()
+                .map(|r| r
+                    .join("Engine/Build/BatchFiles/RunUAT.sh")
+                    .display()
+                    .to_string())
+                .unwrap_or_else(|| "RunUAT.sh".into())
+        );
+        let _ = writeln!(
+            out,
+            "  {}",
+            paint(
+                DIM,
+                "Start the editor from that shell too; apps opened from Finder or the Launcher don't see it."
+            )
+        );
+        if let Some(path) = &wrapper {
+            let _ = writeln!(
+                out,
+                "  {} Wrote {}: run any command through it to pin this Xcode.",
+                paint(GOOD, "✓"),
+                path.display()
+            );
+        }
+    } else {
+        let _ = writeln!(
+            out,
+            "\n  {} No installed Xcode is good for this engine.",
+            paint(BAD, "✗")
+        );
+        if wrapper.is_some() {
+            let _ = writeln!(out, "  No wrapper written: there's nothing to pin yet.");
+        }
+    }
+    if let Some(version) = &report.install {
+        let why = if picked.is_some() {
+            "For the version Epic recommends"
+        } else {
+            "Install one"
+        };
+        let _ = writeln!(out, "\n  {why}, with xcodes:\n    xcodes install {version}");
+        if !report.xcodes_installed {
+            let _ = writeln!(
+                out,
+                "  {}",
+                paint(
+                    DIM,
+                    format!(
+                        "xcodes isn't installed: brew install xcodesorg/made/xcodes ({}), or the XcodesApp ({})",
+                        xcode::XCODES_URL,
+                        xcode::XCODES_APP_URL
+                    )
+                )
+            );
+        }
+    }
+    let _ = writeln!(out);
+    if picked.is_some() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }
 
 fn usage_error(message: &str) -> ExitCode {

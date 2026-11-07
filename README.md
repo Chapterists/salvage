@@ -31,12 +31,20 @@ Fixes that belong inside the engine go upstream to Epic Games as pull requests, 
 
 One program with a subcommand for each job. It runs on macOS, Windows and Linux.
 
-**`salvage doctor`** runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific. It changes nothing; it reads your setup and prints fixes for you to run.
+**`salvage doctor`** runs 12 checks on a Mac for the things that make Unreal Engine slow or broken: Xcode against the engine's supported range and Epic's documented versions, the Metal Toolchain, Rosetta, Mac shader formats, free space, caches, RAM, swap and the debugger's formatters. Each problem comes with a fix. On Windows and Linux it runs the 6 checks that aren't Mac-specific. It changes nothing; it reads your setup and prints fixes for you to run.
 
 ```sh
 salvage doctor                      # finds your engine on its own
 salvage doctor --project ~/Projects/MyGame
 salvage doctor --json
+```
+
+**`salvage xcode`** finds every installed Xcode (Spotlight, `/Applications`, `~/Applications`, and xcodes' list if you use it) and judges each against the engine you build with, using two sources: the Xcode range the engine's own `Apple_SDK.json` accepts, read from your install, and Epic's macOS requirements page, which is narrower and names versions that don't work (for UE 5.8: minimum 26.0, recommended 26.1.1, and "Xcode 26.4 is not compatible", although the engine's config accepts 15.2 to 27.9). Salvage keeps that page as a small table with the source and the date it was checked, and warns, rather than fails, about a version the config accepts but Epic warns against. It also checks that each Xcode has the Metal Toolchain and the Metal tools the engine's shader compiler runs, and shows what xcode-select and `DEVELOPER_DIR` point at. Then it prints the `DEVELOPER_DIR=...` to pin the right Xcode for that engine, per build, or writes a small wrapper script with `--wrapper`. It never runs sudo or changes xcode-select. Installing and switching Xcode is [xcodes](https://github.com/XcodesOrg/xcodes)' job: when no installed Xcode is right, Salvage prints the `xcodes install <version>` command to run. `salvage doctor` checks the active Xcode the same way and points here.
+
+```sh
+salvage xcode                       # every installed Xcode, judged for this project's engine
+salvage xcode --wrapper ./ue-xcode  # also write a script: ./ue-xcode .../RunUAT.sh BuildCookRun ...
+salvage xcode --json
 ```
 
 **`salvage soundings`** reads a memreport or LLM CSV from an Unreal Engine game, shows where the memory goes, and measures the run against 8, 12 and 16 GB machines. Give it two captures and it shows what changed. It only reads capture files, and it measures memory; it doesn't save any by itself. [docs/benchmark-recipe.md](docs/benchmark-recipe.md) covers how to take captures worth comparing.

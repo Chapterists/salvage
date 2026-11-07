@@ -25,6 +25,7 @@ pub const SWAP_WARN_RATIO: f64 = 0.5;
 const MAC_SHADER_SECTION: &str = "/Script/MacTargetPlatform.MacTargetSettings";
 const XCODE_SELECT: &str = "sudo xcode-select -s /Applications/Xcode.app";
 const METAL_DOWNLOAD: &str = "xcodebuild -downloadComponent MetalToolchain";
+const XCODE_GUARD: &str = "salvage xcode";
 
 pub fn all(ctx: &Context) -> Vec<Check> {
     vec![
@@ -212,15 +213,48 @@ fn xcode(ctx: &Context) -> Check {
             .fail(format!("{named} is newer than {} supports ({range})", engine.label()))
             .detail("The engine's SDK check will reject it when you build.")
             .fix(Fix::run(
-                format!("Install Xcode {recommended} alongside it from developer.apple.com/download/all, then select it:"),
-                format!("sudo xcode-select -s /Applications/Xcode-{recommended}.app"),
+                format!("See every installed Xcode, and pin a good one for this engine (or install Xcode {recommended} with xcodes):"),
+                XCODE_GUARD,
             ));
     }
-    let mut check = check.pass(format!("{named}, within the engine's range ({range})"));
+    // Epic's documentation is narrower than the engine's range, and names
+    // versions that don't work.
+    let row = engine
+        .version
+        .as_ref()
+        .and_then(crate::xcode::epic::row_for);
+    let judgement = crate::xcode::judge(Some(&version), Some(&sdk), row);
+    let warned = matches!(
+        judgement.verdict,
+        crate::xcode::Verdict::NotCompatible | crate::xcode::Verdict::BelowEpicMinimum
+    );
+    let mut check = if warned {
+        check
+            .warn(format!(
+                "{named} is within the engine's range ({range}), but Epic warns against it"
+            ))
+            .fix(Fix::run(
+                "See every installed Xcode, and pin a good one for this engine:",
+                XCODE_GUARD,
+            ))
+    } else {
+        check.pass(format!("{named}, within the engine's range ({range})"))
+    };
+    for reason in judgement
+        .reasons
+        .iter()
+        .filter(|r| !r.starts_with("Epic builds"))
+    {
+        check = check.detail(reason.clone());
+    }
     if let Some(main) = &sdk.main
         && *main != version
     {
         check = check.detail(format!("Epic builds this engine with Xcode {main}."));
+    }
+    if !warned && row.is_some() && judgement.verdict != crate::xcode::Verdict::Recommended {
+        check = check
+            .detail("`salvage xcode` lists every installed Xcode and how to pin one per build.");
     }
     check
 }

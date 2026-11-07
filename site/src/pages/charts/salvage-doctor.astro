@@ -26,7 +26,7 @@ const groups = [
     checks: [
       {
         name: "Xcode",
-        what: "Runs xcodebuild -version and compares the result with the range of Xcode versions the engine declares in its own config. Fails if Xcode is missing, if only the Command Line Tools are active, if its license hasn't been accepted, or if the version is outside the engine's range. Notes the version Epic builds that engine with.",
+        what: "Runs xcodebuild -version and compares the result with the range of Xcode versions the engine declares in its own config, and with Epic's documented versions for that engine. Fails if Xcode is missing, if only the Command Line Tools are active, if its license hasn't been accepted, or if the version is outside the engine's range. Warns if the engine accepts it but Epic lists it as not compatible or below its minimum. Notes the version Epic recommends and builds with, and points to salvage xcode.",
         mac: true,
       },
       {
@@ -156,8 +156,15 @@ salvage doctor --json</code></pre>
     </p>
     <p>
       The two can differ. For 5.8, Epic's page lists Xcode 26.0 as the minimum and 26.1.1 as recommended, and says
-      Xcode 26.4 isn't compatible. The engine's config accepts 15.2 to 27.9. If doctor passes but Epic's page says your
-      Xcode isn't supported, go by Epic's page.
+      Xcode 26.4 isn't compatible. The engine's config accepts 15.2 to 27.9. Salvage keeps what the page says as a small
+      table, with the date it was checked, so doctor fails a version the engine rejects and warns about one the engine
+      accepts but Epic warns against.
+    </p>
+    <p>
+      <code>salvage xcode</code> goes further: it judges every installed Xcode the same way, checks each one's Metal
+      tools, and prints the <code>DEVELOPER_DIR</code> to pin the right one for that engine, per build, without
+      <code>sudo xcode-select</code>. For installing another Xcode it hands off to
+      <a href="https://github.com/XcodesOrg/xcodes">xcodes</a>, printing the <code>xcodes install</code> command.
     </p>
 
     <h2>On Windows and Linux</h2>
