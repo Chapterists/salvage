@@ -71,6 +71,122 @@ struct TArrayView {
     int32 ArrayNum = 0;
 };
 
+// --- sparse arrays, sets and maps ---------------------------------------------------
+
+// One bit per slot, in 32-bit words: four inline, more on the heap.
+struct TBitArray {
+    TInlineAllocatorData<uint32, 4> AllocatorInstance;
+    int32 NumBits = 0;
+    int32 MaxBits = 0;
+};
+
+template <int Size, int Align>
+struct TAlignedBytes {
+    alignas(Align) uint8 Pad[Size];
+};
+
+// A slot holds an element, or (once removed) a link in the free list.
+template <typename T>
+union TSparseArrayElementOrFreeListLink {
+    T ElementData;
+    struct {
+        int32 PrevFreeIndex;
+        int32 NextFreeIndex;
+    };
+};
+
+template <typename T>
+struct TSparseArray {
+    TArray<TSparseArrayElementOrFreeListLink<TAlignedBytes<sizeof(T), alignof(T)>>> Data;
+    TBitArray AllocationFlags;
+    int32 FirstFreeIndex = -1;
+    int32 NumFreeIndices = 0;
+};
+
+// Fills slots 0..count-1, then removes the slots in `removed`.
+template <typename T>
+TSparseArray<T> MakeSparse(const T* values, int32 count, const int32* removed, int32 removed_count) {
+    using Slot = TSparseArrayElementOrFreeListLink<TAlignedBytes<sizeof(T), alignof(T)>>;
+    TSparseArray<T> array;
+    array.Data.AllocatorInstance.Data = new Slot[count]();
+    array.Data.ArrayNum = array.Data.ArrayMax = count;
+    int32 words = (count + 31) / 32;
+    uint32* bits = words > 4 ? new uint32[words]() : reinterpret_cast<uint32*>(array.AllocationFlags.AllocatorInstance.InlineData);
+    if (words > 4) array.AllocationFlags.AllocatorInstance.SecondaryData.Data = bits;
+    else std::memset(bits, 0, sizeof(uint32) * 4);
+    array.AllocationFlags.NumBits = array.AllocationFlags.MaxBits = count;
+    for (int32 i = 0; i < count; ++i) {
+        new (&array.Data.AllocatorInstance.Data[i].ElementData) T(values[i]);
+        bits[i / 32] |= 1u << (i % 32);
+    }
+    for (int32 r = 0; r < removed_count; ++r) {
+        int32 i = removed[r];
+        bits[i / 32] &= ~(1u << (i % 32));
+        Slot& slot = array.Data.AllocatorInstance.Data[i];
+        std::memset(&slot, 0xAB, sizeof(Slot));  // leftover bytes a formatter must not show
+        slot.PrevFreeIndex = -1;
+        slot.NextFreeIndex = array.FirstFreeIndex;
+        array.FirstFreeIndex = i;
+        ++array.NumFreeIndices;
+    }
+    return array;
+}
+
+struct FSetElementId {
+    int32 Index;
+};
+
+template <typename T>
+struct TSparseSetElementBase {
+    T Value;
+    FSetElementId HashNextId;
+    int32 HashIndex;
+};
+
+template <typename T>
+struct TSetElement : TSparseSetElementBase<T> {};
+
+template <typename T>
+struct TSet {
+    TSparseArray<TSetElement<T>> Elements;
+    TInlineAllocatorData<FSetElementId, 1> Hash;
+    int32 HashSize = 0;
+};
+
+template <typename T>
+TSet<T> MakeSet(const T* values, int32 count, const int32* removed, int32 removed_count) {
+    TSetElement<T> elements[64];
+    for (int32 i = 0; i < count; ++i) elements[i] = TSetElement<T>{{values[i], {-1}, 0}};
+    return TSet<T>{MakeSparse(elements, count, removed, removed_count), {}, 0};
+}
+
+template <typename K, typename V>
+struct TTuple {
+    K Key;
+    V Value;
+};
+
+template <typename K, typename V>
+struct TMapBase {
+    TSet<TTuple<K, V>> Pairs;
+};
+
+template <typename K, typename V>
+struct TSortableMapBase : TMapBase<K, V> {};
+
+template <typename K, typename V>
+struct TMap : TSortableMapBase<K, V> {};
+
+template <typename K, typename V>
+struct TMultiMap : TSortableMapBase<K, V> {};
+
+template <typename Map, typename K, typename V>
+Map MakeMap(const TTuple<K, V>* pairs, int32 count, const int32* removed, int32 removed_count) {
+    Map map;
+    map.Pairs = MakeSet(pairs, count, removed, removed_count);
+    return map;
+}
+
 // --- FName and its name pool -----------------------------------------------------
 
 struct FNameEntryId {
@@ -368,6 +484,29 @@ int main() {
     reinterpret_cast<int32*>(inline_numbers.AllocatorInstance.InlineData)[1] = 8;
     inline_numbers.ArrayNum = 2;
     inline_numbers.ArrayMax = 4;
+
+    const int32 sparse_values[] = {10, 20, 30, 40, 50};
+    const int32 sparse_removed[] = {1, 3};
+    TSparseArray<int32> sparse = MakeSparse(sparse_values, 5, sparse_removed, 2);
+    int32 many_values[200];
+    int32 many_removed[100];
+    for (int32 i = 0; i < 200; ++i) many_values[i] = i;
+    for (int32 i = 0; i < 100; ++i) many_removed[i] = i * 2;
+    TSparseArray<int32> sparse_spilled = MakeSparse(many_values, 200, many_removed, 100);
+
+    const FString crew_names[] = {MakeString(u"Ada"), MakeString(u"Bo"), MakeString(u"Cy")};
+    const int32 crew_removed[] = {1};
+    TSet<FString> crew = MakeSet(crew_names, 3, crew_removed, 1);
+
+    const TTuple<FString, int32> cargo_pairs[] = {
+        {MakeString(u"Hull"), 3}, {MakeString(u"Mast"), 1}, {MakeString(u"Sail"), 2}, {MakeString(u"Rope"), 12}};
+    const int32 cargo_removed[] = {1};
+    TMap<FString, int32> cargo = MakeMap<TMap<FString, int32>>(cargo_pairs, 4, cargo_removed, 1);
+    TMap<FString, int32> no_cargo;
+
+    const TTuple<int32, FString> mooring_pairs[] = {
+        {1, MakeString(u"Dock A")}, {1, MakeString(u"Dock B")}, {2, MakeString(u"Pier")}};
+    TMultiMap<int32, FString> moorings = MakeMap<TMultiMap<int32, FString>>(mooring_pairs, 3, nullptr, 0);
 
     FName none_name = AddName("None");
     FName hull_name = AddName("Hull");

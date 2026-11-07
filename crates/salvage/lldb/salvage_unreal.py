@@ -4,7 +4,7 @@ Load with:  command script import /path/to/salvage_unreal.py
 (`salvage lldb install` adds that line to ~/.lldbinit for you.)
 
 Covers strings and containers (FString, FName, FText, TArray, TArrayView,
-TStringView), pointers (TSharedPtr, TSharedRef, TWeakPtr, TUniquePtr,
+TStringView, TSparseArray, TSet, TMap, TMultiMap), pointers (TSharedPtr, TSharedRef, TWeakPtr, TUniquePtr,
 TObjectPtr, TSoftObjectPtr, FSoftObjectPath), TOptional, TVariant, FGuid,
 FGameplayTag, and math types (FVector, FVector2D, FVector4, FRotator, FQuat,
 FTransform, FIntPoint, FIntVector, FColor, FLinearColor).
@@ -266,6 +266,142 @@ def array_summary(valobj):
 def array_view_summary(valobj):
     num = _child(valobj, "ArrayNum")
     return None if num is None else "Num=%d" % num.GetValueAsSigned(0)
+
+
+# --- sparse arrays, sets and maps ------------------------------------------------------
+#
+# A TSparseArray keeps its elements in a TArray whose slots are either an element or,
+# once removed, a link in a free list. A TBitArray (AllocationFlags) says which slots
+# hold elements, one bit per slot, in 32-bit words stored inline or on the heap. TSet
+# keeps its elements in a TSparseArray of set elements (the value plus hash links), and
+# TMap and TMultiMap keep their key/value pairs in a TSet (Pairs). Children are shown by
+# slot index, so removed slots show up as gaps in the numbering.
+
+
+def _allocated_slots(flags, count):
+    """Indices of the set bits among the first `count` bits of a TBitArray."""
+    allocator = _child(flags, "AllocatorInstance")
+    num_bits = _child(flags, "NumBits")
+    if allocator is None or num_bits is None:
+        return None
+    count = min(count, max(_signed32(num_bits) or 0, 0))
+    if count <= 0:
+        return []
+    words = (count + 31) // 32
+    data = _read(flags.GetProcess(), _allocation(allocator), words * 4)
+    if data is None:
+        return None
+    values = struct.unpack("<%dI" % words, data)
+    slots = [i for i in range(count) if values[i // 32] >> (i % 32) & 1]
+    return slots[:MAX_CHILDREN]
+
+
+def _sparse(valobj):
+    """(slots address, slot count, slot size, element count, allocation flags) for a TSparseArray."""
+    data = _child(valobj, "Data")
+    flags = _child(valobj, "AllocationFlags")
+    free = _child(valobj, "NumFreeIndices")
+    if data is None or flags is None or free is None:
+        return None
+    info = _array(data)
+    if info is None or info[2] is None:
+        return None
+    address, count, slot = info
+    return address, count, slot.GetByteSize(), max(count - max(_signed32(free) or 0, 0), 0), flags
+
+
+def _set_elements(valobj):
+    """The TSparseArray inside a TSet, or inside the TSet inside a TMap."""
+    pairs = _child(valobj, "Pairs")
+    return _child(pairs if pairs is not None else valobj, "Elements")
+
+
+def sparse_array_summary(valobj):
+    info = _sparse(valobj)
+    return None if info is None else "Num=%d" % info[3]
+
+
+def set_summary(valobj):
+    elements = _set_elements(valobj)
+    return None if elements is None else sparse_array_summary(elements)
+
+
+def pair_summary(valobj):
+    key = _child(valobj, "Key")
+    value = _child(valobj, "Value")
+    if key is None or value is None or valobj.GetNumChildren() != 2:
+        return None
+    shown = lambda v: v.GetSummary() or v.GetValue() or "{...}"  # noqa: E731
+    return "(%s, %s)" % (shown(key), shown(value))
+
+
+class TSparseArrayProvider:
+    """Children [slot] for the allocated slots of a TSparseArray, skipping removed ones."""
+
+    def __init__(self, valobj, internal_dict):
+        self.valobj = valobj
+        self.children = []  # (slot, address, type)
+
+    def sparse_array(self):
+        return _raw(self.valobj)
+
+    def element(self, sparse_array, address):
+        """(address, type) of what to show for the element stored at `address`."""
+        element = _template_arg(sparse_array, 0)
+        return (address, element) if element is not None else None
+
+    def update(self):
+        self.children = []
+        try:
+            sparse_array = self.sparse_array()
+            info = _sparse(sparse_array) if sparse_array is not None else None
+            if info is None:
+                return False
+            address, count, stride, _, flags = info
+            if not address or not stride:
+                return False
+            for slot in _allocated_slots(flags, count) or []:
+                shown = self.element(sparse_array, address + slot * stride)
+                if shown is None:
+                    break
+                self.children.append((slot, shown[0], shown[1]))
+        except Exception:  # noqa: BLE001
+            self.children = []
+        return False
+
+    def num_children(self):
+        return len(self.children)
+
+    def get_child_index(self, name):
+        try:
+            slot = int(name.lstrip("[").rstrip("]"))
+        except ValueError:
+            return -1
+        return next((i for i, child in enumerate(self.children) if child[0] == slot), -1)
+
+    def get_child_at_index(self, index):
+        if index < 0 or index >= len(self.children):
+            return None
+        slot, address, element = self.children[index]
+        return self.valobj.CreateValueFromAddress("[%d]" % slot, address, element)
+
+    def has_children(self):
+        return True
+
+
+class TSetProvider(TSparseArrayProvider):
+    """Children [slot] for a TSet's elements, or a TMap's key/value pairs."""
+
+    def sparse_array(self):
+        return _set_elements(_raw(self.valobj))
+
+    def element(self, sparse_array, address):
+        # A set element holds the value plus its hash links; show just the value.
+        stored = _template_arg(sparse_array, 0)
+        if stored is None:
+            return None
+        value = _child(self.valobj.CreateValueFromAddress("element", address, stored), "Value")
+        return None if value is None else (value.GetLoadAddress(), value.GetType())
 
 
 # --- FName -------------------------------------------------------------------------
@@ -757,6 +893,10 @@ FORMATTERS = [
     (r"^FText$", ftext_summary, None),
     (r"^TArray<.+>$", array_summary, "TArrayProvider"),
     (r"^TArrayView<.+>$", array_view_summary, "TArrayViewProvider"),
+    (r"^TSparseArray<.+>$", sparse_array_summary, "TSparseArrayProvider"),
+    (r"^(TSet|TSparseSet)<.+>$", set_summary, "TSetProvider"),
+    (r"^(TMap|TMultiMap|TSparseMap|TSparseMultiMap)<.+>$", set_summary, "TSetProvider"),
+    (r"^(TTuple|TPair)<.+>$", pair_summary, None),
     (r"^TShared(Ptr|Ref)<.+>$", shared_ptr_summary, "PointerProvider"),
     (r"^TWeakPtr<.+>$", weak_ptr_summary, "PointerProvider"),
     (r"^TUniquePtr<.+>$", unique_ptr_summary, "PointerProvider"),

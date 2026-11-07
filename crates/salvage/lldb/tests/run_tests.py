@@ -28,6 +28,12 @@ EXPECTED = {
     "no_numbers": "Num=0",
     "numbers_view": "Num=3",
     "inline_numbers": "Num=2",
+    "sparse": "Num=3",
+    "sparse_spilled": "Num=100",
+    "crew": "Num=2",
+    "cargo": "Num=3",
+    "no_cargo": "Num=0",
+    "moorings": "Num=3",
     "hull_name": "Hull",
     "numbered_name": "Crate_3",
     "far_name": "FarBlock",
@@ -73,6 +79,28 @@ EXPECTED_CHILDREN = [
     ("numbers_view", "[0] = 1"),
     ("some_number", "Value = 17"),
     ("variant_string", 'Value = "Mast"'),
+    ("sparse", "[0] = 10"),
+    ("sparse", "[2] = 30"),
+    ("sparse", "[4] = 50"),
+    ("sparse_spilled", "[1] = 1"),
+    # 200 slots need 7 words of bits, so they're all on the heap. LLDB prints the
+    # first 24 children of a long container, so check one near the end of those.
+    ("sparse_spilled", "[47] = 47"),
+    ("crew", '[0] = "Ada"'),
+    ("crew", '[2] = "Cy"'),
+    ("cargo", '[0] = ("Hull", 3)'),
+    ("cargo", '[3] = ("Rope", 12)'),
+    ("moorings", '[0] = (1, "Dock A")'),
+    ("moorings", '[1] = (1, "Dock B")'),
+]
+
+# Children that must not appear: removed slots are skipped, not shown as garbage.
+UNEXPECTED_CHILDREN = [
+    ("sparse", "[1] ="),
+    ("sparse", "[3] ="),
+    ("sparse_spilled", "[0] ="),
+    ("crew", "[1] ="),
+    ("cargo", "[1] ="),
 ]
 
 
@@ -133,7 +161,20 @@ def check(flavor, output):
                 block.append(line)
         if not any(fragment in line for line in block):
             failures.append("%s: %s has no child %r" % (flavor, name, fragment))
+    for name, fragment in UNEXPECTED_CHILDREN:
+        start = next((i for i, l in enumerate(lines) if re.match(r"^\(.*\) %s = " % re.escape(name), l)), None)
+        block = []
+        if start is not None:
+            for line in lines[start + 1 :]:
+                if line.startswith("("):
+                    break
+                block.append(line)
+        if start is None or any(line.strip().startswith(fragment) for line in block):
+            failures.append("%s: %s shows removed slot %r" % (flavor, name, fragment))
     return failures
+
+
+TOTAL = len(EXPECTED) + len(EXPECTED_CHILDREN) + len(UNEXPECTED_CHILDREN)
 
 
 def main():
@@ -145,7 +186,7 @@ def main():
             if problems and "-v" in sys.argv:
                 print(output)  # the whole LLDB session, to see what went wrong
             failures += problems
-            print("%s layout: %d of %d checks passed" % (flavor, len(EXPECTED) + len(EXPECTED_CHILDREN) - len(problems), len(EXPECTED) + len(EXPECTED_CHILDREN)))
+            print("%s layout: %d of %d checks passed" % (flavor, TOTAL - len(problems), TOTAL))
     for failure in failures:
         print("  FAIL " + failure)
     sys.exit(1 if failures else 0)

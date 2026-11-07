@@ -9,12 +9,14 @@ salvage lldb uninstall   # takes it out again
 
 It covers:
 
-- Strings and containers: `FString`, `FUtf8String`, `FName`, `FText`, `TStringView`, `TArray`, `TArrayView`
+- Strings and containers: `FString`, `FUtf8String`, `FName`, `FText`, `TStringView`, `TArray`, `TArrayView`, `TSparseArray`, `TSet`, `TMap`, `TMultiMap`
 - Pointers: `TSharedPtr`, `TSharedRef`, `TWeakPtr`, `TUniquePtr`, `TObjectPtr`, `FSoftObjectPath`, `TSoftObjectPtr`, `TSoftClassPtr`
 - `TOptional`, `TVariant`, `FGuid`, `FGameplayTag`
 - Math: `FVector`, `FVector2D`, `FVector4`, `FRotator`, `FQuat`, `FTransform`, `FIntPoint`, `FIntVector`, `FColor`, `FLinearColor`
 
-It works alongside the engine's own formatters. Where both cover a type, whichever loads last wins.
+`TSparseArray`, `TSet`, `TMap` and `TMultiMap` show `Num=` and one child per element, numbered by its slot. Removed elements leave holes in a sparse array, and those slots are skipped, so the numbering can have gaps. A `TMap` child shows its pair as `(key, value)`. The hash a `TSet` keeps alongside its elements isn't shown.
+
+It works alongside the engine's own formatters. Where both cover a type, whichever loads last wins. You'd still want the engine's for `TWeakObjectPtr`, `TBitArray` and `TChunkedArray`, which these don't cover yet. These read the sparse set that `TSet` and `TMap` use by default in UE 5.8; a build that sets `UE_USE_COMPACT_SET_AS_DEFAULT` gets raw values for those.
 
 ## How it was written
 
