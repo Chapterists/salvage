@@ -36,6 +36,13 @@ pub fn scan(plugins: &[Plugin], roots: &[&Path], details: bool, all: bool) -> St
         .map(|r| r.display().to_string())
         .collect::<Vec<_>>()
         .join(", ");
+    if plugins.is_empty() {
+        out.push_str(&format!(
+            "\n  {}  No plugins found in {where_}, so there's nothing to scan.\n\n",
+            paint(BOLD, "salvage refit scan")
+        ));
+        return out;
+    }
     out.push_str(&format!(
         "\n  {}  {} plugin{} in {where_}\n\n",
         paint(BOLD, "salvage refit scan"),

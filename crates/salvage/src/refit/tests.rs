@@ -589,3 +589,37 @@ fn a_byte_order_mark_is_skipped() {
     );
     assert_eq!(scan_dir(&dir).verdict, Verdict::ContentOnly);
 }
+
+#[test]
+fn a_relative_plugin_path_finds_its_project() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = project(tmp.path());
+    plugin(&project.join("Plugins"), "Sail", &[("Sail", None)], None);
+    // `salvage refit build Plugins/Sail`, run in the project folder.
+    let found = enclosing_project(Path::new("Plugins/Sail"), &project).expect("found");
+    assert_eq!(found.name, "Harbor");
+    assert!(enclosing_project(Path::new("./Plugins/Sail"), &project).is_some());
+    // From inside Plugins, and with a full path.
+    assert!(enclosing_project(Path::new("Sail"), &project.join("Plugins")).is_some());
+    assert!(enclosing_project(&project.join("Plugins/Sail"), Path::new("/nowhere")).is_some());
+    // A plugin outside any project has none.
+    let loose = plugin(&tmp.path().join("Loose"), "Mast", &[("Mast", None)], None);
+    assert!(enclosing_project(Path::new("Mast"), loose.parent().unwrap()).is_none());
+}
+
+#[test]
+fn a_project_without_plugins_has_nothing_to_scan() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = project(tmp.path());
+    assert!(
+        project_roots(&project).is_empty(),
+        "no Plugins folder: nothing to scan, not an error"
+    );
+    let (plugins, errors) = scan_roots(&project_roots(&project), false);
+    assert!(plugins.is_empty() && errors.is_empty());
+    let text = render::scan(&plugins, &[project.as_path()], false, false);
+    assert!(text.contains("No plugins found"), "{text}");
+
+    std::fs::create_dir_all(project.join("Plugins")).unwrap();
+    assert_eq!(project_roots(&project), vec![project.join("Plugins")]);
+}
