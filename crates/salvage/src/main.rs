@@ -993,9 +993,14 @@ fn refit_scan(
             .ok()
             .and_then(|d| Project::find_in(&d)),
     };
+    // A project with no Plugins folder has nothing to scan; say so, and exit 0.
+    let mut shown_roots = Vec::new();
     if roots.is_empty() && !engine_plugins {
         match &project {
-            Some(project) => roots.push(project.dir.join("Plugins")),
+            Some(project) => {
+                roots = refit::project_roots(&project.dir);
+                shown_roots.push(project.dir.clone());
+            }
             None => {
                 return usage_error(
                     "nothing to scan: give plugin folders, run this in a project, or pass --engine-plugins",
@@ -1030,6 +1035,7 @@ fn refit_scan(
         })
         .collect();
     let (plugins, errors) = refit::scan_roots(&roots, single);
+    let roots = if roots.is_empty() { shown_roots } else { roots };
     let mut out = anstream::stdout();
     if json {
         let value =

@@ -606,3 +606,20 @@ fn a_relative_plugin_path_finds_its_project() {
     let loose = plugin(&tmp.path().join("Loose"), "Mast", &[("Mast", None)], None);
     assert!(enclosing_project(Path::new("Mast"), loose.parent().unwrap()).is_none());
 }
+
+#[test]
+fn a_project_without_plugins_has_nothing_to_scan() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = project(tmp.path());
+    assert!(
+        project_roots(&project).is_empty(),
+        "no Plugins folder: nothing to scan, not an error"
+    );
+    let (plugins, errors) = scan_roots(&project_roots(&project), false);
+    assert!(plugins.is_empty() && errors.is_empty());
+    let text = render::scan(&plugins, &[project.as_path()], false, false);
+    assert!(text.contains("No plugins found"), "{text}");
+
+    std::fs::create_dir_all(project.join("Plugins")).unwrap();
+    assert_eq!(project_roots(&project), vec![project.join("Plugins")]);
+}

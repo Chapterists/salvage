@@ -46,6 +46,17 @@ pub fn inside_engine(path: &Path) -> bool {
         .any(|a| a.join("Engine/Build/Build.version").is_file())
 }
 
+/// What a plain `salvage refit scan` in a project scans: its Plugins folder,
+/// or nothing if it has none (a project without plugins isn't an error).
+pub fn project_roots(project_dir: &Path) -> Vec<PathBuf> {
+    let plugins = project_dir.join("Plugins");
+    if plugins.is_dir() {
+        vec![plugins]
+    } else {
+        Vec::new()
+    }
+}
+
 /// `path` made absolute against `cwd`, so a relative path like
 /// `Plugins/PSDImporter` can be walked up to its project.
 pub fn absolute(path: &Path, cwd: &Path) -> PathBuf {
