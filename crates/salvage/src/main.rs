@@ -587,15 +587,18 @@ fn run_trim(project: Option<PathBuf>, editor: bool, undo: bool, dry_run: bool) -
         };
         let _ = writeln!(out, "  {done} {line}");
     }
-    let _ = writeln!(
-        out,
-        "\n  {}\n",
-        if undo {
-            "Restart the editor or game for the stock settings to come back."
-        } else {
-            "Restart the editor or game to pick these up. Each value has its reason next to it;\n  `salvage trim --undo` takes them all out."
-        }
-    );
+    if undo {
+        let _ = writeln!(
+            out,
+            "\n  Restart the editor or game for the stock settings to come back.\n"
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "\n  {}\n\n  Restart the editor or game to pick these up. Each value has its reason next to it;\n  `salvage trim --undo` takes them all out.\n",
+            trim::SCOPE
+        );
+    }
     ExitCode::SUCCESS
 }
 
@@ -655,6 +658,7 @@ fn trim_dry_run(out: &mut impl Write, project: &Project, editor: bool, undo: boo
         let _ = writeln!(out, "  {mark} {line}");
     }
     if !undo {
+        let _ = writeln!(out, "\n  {}", trim::SCOPE);
         for (file, block) in trim::plan(editor) {
             let changes_file = changes.iter().any(|(path, change)| {
                 relative(path) == file

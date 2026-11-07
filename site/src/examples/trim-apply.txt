@@ -5,6 +5,9 @@
   ✓ Wrote Config/Windows/WindowsEngine.ini
   ✓ Wrote Config/Linux/LinuxEngine.ini
 
+  The tiers apply on 8, 12 and 16 GB machines. The smaller audio stream cache is set
+  per platform, so it applies on every machine, including those over 16 GB.
+
   Restart the editor or game to pick these up. Each value has its reason next to it;
   `salvage trim --undo` takes them all out.
 
