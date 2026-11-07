@@ -262,8 +262,8 @@ const settings: Setting[] = [
     </p>
     <Terminal command="salvage trim --undo" output={undo} caption={captured} />
     <p>
-      Restart the editor or game for the stock settings to come back. Every setting is back as it was; whitespace at
-      the end of a file can differ, and the backup has the file exactly as it was before.
+      Restart the editor or game for the stock settings to come back. Each file comes back byte for byte, as it was
+      before salvage trim touched it.
     </p>
 
     <h2>The settings, and why</h2>
