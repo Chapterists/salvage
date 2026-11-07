@@ -1,0 +1,4 @@
+LogPython: REFIT: imported objects: ['/Game/PSD/Boat.Boat']
+LogPython: REFIT: asset /Game/PSD/Boat.Boat class PSDDocument
+LogPython: REFIT: asset /Game/PSD/Boat_Layers/T_Boat_Background_0.T_Boat_Background_0 class Texture2D
+LogPython: REFIT: asset /Game/PSD/Boat_Layers/T_Boat_Square_1.T_Boat_Square_1 class Texture2D

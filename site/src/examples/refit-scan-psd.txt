@@ -1,0 +1,15 @@
+
+  salvage refit scan  1 plugin in /Users/Shared/Epic Games/UE_5.8/Engine/Plugins/Experimental/PSDImporter
+
+    ✗    1  needs porting
+
+  ✗ PSDImporter  needs porting
+      the plugin: SupportedTargetPlatforms is Win64
+      PSDImporterEditor: PlatformAllowList is Win64
+      PSDImporter: PlatformAllowList is Win64
+      PSDImporterCore: PlatformAllowList is Win64
+      No Mac binaries for PSDImporterEditor, PSDImporter, PSDImporterCore
+      Source/ThirdParty/PsdSDK: prebuilt for Windows only (Source/ThirdParty/PsdSDK/Libraries/Win64/x64/Debug/Psd.lib, Source/ThirdParty/PsdSDK/Libraries/Win64/x64/Release/Psd.lib), no .a, .dylib or .framework
+      Windows-only #if blocks with no #else (they compile on Mac, but do nothing there): Source/ThirdParty/PsdSDK/Includes/PsdCompilerMacros.h:139, Source/ThirdParty/PsdSDK/Includes/PsdPlatform.h:62
+      Next: port what's listed above, then salvage refit patch and build.
+

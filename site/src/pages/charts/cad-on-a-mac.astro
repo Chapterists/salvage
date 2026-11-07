@@ -14,6 +14,7 @@ const MAYO = "https://github.com/fougue/mayo";
     <h2>Why it doesn't just open</h2>
     <p>Epic's <a href={`${EPIC}/datasmith-supported-software-and-file-types`}>Datasmith Supported Software and File Types</a> page lists the CAD formats the Datasmith CAD importer reads: 3DXML, IFC, IGES, JT, Parasolid, PLM XML and STEP. It also says that "all Datasmith importers in the Unreal Editor, are currently only available for Microsoft Windows platforms".</p>
     <p>The Mac install agrees. In Unreal Engine 5.8.4 for Mac, the Datasmith CAD Importer plugin is only built for Windows and Linux, so it isn't there to turn on.</p>
+    <p>It might be rebuildable. <a href="/charts/salvage-refit/"><code>salvage refit</code></a> scans it as "allow list only: patch, then rebuild": its lists leave Mac out, and the scan found no Windows-only libraries, Windows API calls or Windows-only build rules. It also flags Windows-only blocks in the plugin's TechSoft interface that compile to nothing on a Mac. We haven't tried the rebuild, and a clean scan doesn't promise the importer reads a single file on a Mac. Until someone tries, the routes below are the ones that work.</p>
 
     <h2>If your design tool has a Mac exporter, start there</h2>
     <p>Epic makes Datasmith exporters that run on macOS for three applications:</p>
@@ -66,6 +67,7 @@ cmake --build . --config Release</code></pre>
     <ul>
       <li>We haven't built or run Mayo. There's no Mac release, and building it pulls in Qt and OpenCascade, which the Mac we used doesn't have, so this page has no real conversion output. The commands come from Mayo's build instructions and from its converter's own source.</li>
       <li>We haven't tried the Mac Datasmith exporters, or importing a <code>.udatasmith</code> file on a Mac.</li>
+      <li>We haven't tried rebuilding the Datasmith CAD Importer for Mac with <a href="/charts/salvage-refit/"><code>salvage refit</code></a>.</li>
     </ul>
     <p>If you try either, an <a href="https://github.com/Chapterists/salvage/issues">issue</a> with what happened would help us make this page firmer.</p>
   </div>

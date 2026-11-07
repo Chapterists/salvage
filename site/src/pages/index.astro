@@ -117,7 +117,10 @@ const recent = (await logbookEntries()).slice(0, 3);
         <p class="now">
           In the box: <a href="/charts/salvage-doctor/"><code>salvage doctor</code></a> runs 12 checks on a Mac for
           the things that make Unreal slow or broken, <a href="/charts/salvage-lldb/"><code>salvage lldb</code></a> makes
-          Unreal types readable in Xcode and LLDB, and <a href="/charts/salvage-clangd/"><code>salvage clangd</code></a> sets up VS Code or Neovim for Unreal C++.
+          Unreal types readable in Xcode and LLDB, <a href="/charts/salvage-clangd/"><code>salvage clangd</code></a> sets
+          up VS Code or Neovim for Unreal C++, and <a href="/charts/salvage-refit/"><code>salvage refit</code></a> rebuilds
+          Windows-only plugins for Mac where the source allows it. It got Epic's PSD
+          importer <a href="/soundings/refit-ue58-mac/">importing a PSD in the Mac editor</a>.
         </p>
       </div>
     </article>
@@ -177,8 +180,8 @@ const recent = (await logbookEntries()).slice(0, 3);
     <div>
       <h2 class="hull">One tool in the box. No release yet.</h2>
       <p>
-        The first tool is the <code>salvage</code> command, with five jobs so
-        far: <code>doctor</code>, <code>soundings</code>, <code>trim</code>, <code>lldb</code> and <code>clangd</code>. You
+        The first tool is the <code>salvage</code> command, with six jobs so
+        far: <code>doctor</code>, <code>soundings</code>, <code>trim</code>, <code>lldb</code>, <code>clangd</code> and <code>refit</code>. You
         can <a href="/charts/salvage-doctor/#get-salvage">build it from source</a> today. There's nothing to download
         yet.
       </p>

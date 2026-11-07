@@ -1,0 +1,10 @@
+
+  salvage refit patch  ~/Projects/Refitted/Plugins/PSDImporter
+  ✓ Copied the plugin from /Users/Shared/Epic Games/UE_5.8/Engine/Plugins/Experimental/PSDImporter
+  ✓ plugin: SupportedTargetPlatforms + Mac
+  ✓ PSDImporterEditor: PlatformAllowList + Mac
+  ✓ PSDImporter: PlatformAllowList + Mac
+  ✓ PSDImporterCore: PlatformAllowList + Mac
+
+  Next: salvage refit build ~/Projects/Refitted/Plugins/PSDImporter. `salvage refit patch --undo` puts it back.
+
