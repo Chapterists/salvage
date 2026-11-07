@@ -222,10 +222,7 @@ fn undo_puts_everything_back() {
         mine,
         "byte for byte"
     );
-    assert_eq!(
-        read(&project, "Config/Mac/MacEngine.ini").trim_end(),
-        no_newline
-    );
+    assert_eq!(read(&project, "Config/Mac/MacEngine.ini"), no_newline);
     assert!(
         !project
             .dir
@@ -262,9 +259,11 @@ fn a_block_edited_in_the_middle_of_a_file_is_replaced_in_place() {
         format!("[A]\nX=1\n\n{BEGIN}\n[ConsoleVariables]\nr.New=1\n{END}\n[B]\nY=2\n")
     );
     remove_block(&path, 10).unwrap();
+    // The begin line doesn't say Salvage added the blank line above it, so
+    // that line belongs to the file and stays.
     assert_eq!(
         read(&project, "Config/DefaultEngine.ini"),
-        "[A]\nX=1\n[B]\nY=2\n"
+        "[A]\nX=1\n\n[B]\nY=2\n"
     );
 }
 
@@ -360,5 +359,35 @@ fn settings_with_an_epic_page_link_to_it() {
                 "{url}"
             );
         }
+    }
+}
+
+#[test]
+fn undo_restores_every_ending_byte_for_byte() {
+    // Files that end without a newline, with one, with a blank line, with
+    // Windows line endings, and with trailing spaces.
+    let endings = [
+        "[A]\nX=1",
+        "[A]\nX=1\n",
+        "[A]\nX=1\n\n",
+        "[A]\r\nX=1\r\n",
+        "[A]\nX=1  \n  ",
+    ];
+    for original in endings {
+        let dir = tempfile::tempdir().unwrap();
+        let project = project(dir.path());
+        let path = project.dir.join("Config/DefaultEngine.ini");
+        fs::write(&path, original).unwrap();
+
+        apply(&project, true, 1).unwrap();
+        // Re-applying rewrites the block in place, keeping its note.
+        apply(&project, true, 2).unwrap();
+        assert!(read(&project, "Config/DefaultEngine.ini").starts_with(original));
+        undo(&project, 3).unwrap();
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            original.as_bytes(),
+            "{original:?} came back changed"
+        );
     }
 }

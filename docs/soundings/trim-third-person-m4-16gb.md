@@ -20,7 +20,7 @@ What `salvage trim` changes in memory and frame time on one machine, with one sm
 Each run launched the game, let the player stand at the start of the level with the default camera (no input), and quit by itself:
 
 ```sh
-UnrealEditor Harbor.uproject -game -windowed -resx=1280 -resy=720 -unattended \
+UnrealEditor Project.uproject -game -windowed -resx=1280 -resy=720 -unattended \
   -llmcsv -ExecCmds="t.MaxFPS 30" -csvCaptureFrames=2100 -ExitAfterCsvProfiling \
   -csvExecCmds="900:memreport -full,1800:memreport -full"
 ```

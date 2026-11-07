@@ -1,7 +1,7 @@
 //! Salvage's chosen values for each tier, each with the reason for it.
 //!
 //! What these move away from (UE 5.8): Nanite streaming pool 512 MB, unreachable
-//! objects purged every 60 s. The rest come from the scalability presets: texture
+//! objects purged every 61.1 s. The rest come from the scalability presets: texture
 //! pool 400, 600, 800 and 1000 MB at Low, Medium, High and Epic textures; virtual
 //! shadow map pages 512 at Low and Medium shadows, 2048 at High, 4096 at Epic;
 //! Lumen atlas 2048 at Medium GI, 3584 at High, 4096 at Epic.
@@ -114,7 +114,7 @@ pub const GAME_TIERS: [Tier; 3] = [
             all(
                 "gc.TimeBetweenPurgingPendingKillObjects",
                 "45",
-                "Purge unreachable objects every 45 s (default 60), so memory comes back sooner.",
+                "Purge unreachable objects every 45 s (the engine's base config sets 61.1), so memory\ncomes back sooner.",
             )
             .docs(GARBAGE_COLLECTION),
         ],
@@ -151,7 +151,7 @@ on bigger machines a pin above 512 would add memory at Low and Medium.",
             all(
                 "gc.TimeBetweenPurgingPendingKillObjects",
                 "30",
-                "Purge unreachable objects every 30 s (default 60).",
+                "Purge unreachable objects every 30 s (61.1 in the engine's base config).",
             )
             .docs(GARBAGE_COLLECTION),
             all(
