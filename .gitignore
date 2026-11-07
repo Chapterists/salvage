@@ -54,3 +54,6 @@ Thumbs.db
 # --- Build output ------------------------------------------------------------
 /target/
 /dist/
+
+# Python caches (the LLDB formatter tests)
+__pycache__/
