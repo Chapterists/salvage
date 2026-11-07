@@ -56,6 +56,17 @@ salvage trim --editor    # also the low-RAM editor preset
 salvage trim --undo      # take everything out again
 ```
 
+**`salvage refit`** gets Windows-only Unreal plugins running on a Mac, where the source allows it. Windows plugin binaries can't load in the Mac editor, so the way through is rebuilding from source. `scan` says, per plugin, whether it works on Mac and what's in the way: no Mac binaries, allow lists that leave Mac out, prebuilt Windows-only libraries, Windows API calls in the source, or no source at all, with files and lines. `patch` adds Mac to the allow lists on a copy inside your project (never in the engine install), backing up the `.uplugin`, and `--undo` puts it back. `build` runs BuildPlugin for Mac and then checks that every module really came out as a Mac binary, because a plugin that leaves Mac out "builds" on a Mac without compiling anything. [docs/soundings/refit-ue58-mac.md](docs/soundings/refit-ue58-mac.md) shows it on Epic's PSDImporter and across every plugin in UE 5.8.
+
+```sh
+salvage refit scan                          # the project's Plugins folder; run in the project folder
+salvage refit scan --engine-plugins         # every plugin in the engine, including Fab ones installed there
+salvage refit scan Plugins/SomePlugin       # one plugin, with everything in its way
+salvage refit patch "/path/to/SomePlugin"   # copy into this project and let Mac through its allow lists
+salvage refit build Plugins/SomePlugin --install   # build for Mac, check the binaries, put them in place
+salvage refit patch Plugins/SomePlugin --undo      # put the .uplugin back
+```
+
 **`salvage lldb`** makes Xcode and LLDB show Unreal types as values instead of raw memory. This one does change your machine: `install` writes the formatter script to Salvage's data folder and adds one marked line to `~/.lldbinit` (and to `~/.lldbinit-Xcode`, if you have one), after backing each file up. `uninstall` takes both out again.
 
 ```sh
