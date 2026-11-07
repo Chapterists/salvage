@@ -1,0 +1,22 @@
+
+  salvage xcode  for Unreal Engine 5.8.4
+  The engine's build check accepts Xcode 15.2.0 to 27.9.0; Epic builds it with 26.1.1.
+  Epic's macOS requirements for 5.8: minimum Xcode 26.0, recommended Xcode 26.1.1; not compatible: Xcode 26.4.
+  https://dev.epicgames.com/documentation/en-us/unreal-engine/macos-development-requirements-for-unreal-engine (checked 2026-11-06)
+
+  Installed
+    ~ Xcode 27.2 (27B52)  /Applications/Xcode.app  ← xcode-select, pick for this engine
+        Epic recommends Xcode 26.1.1 for Unreal Engine 5.8; this one is newer than that.
+
+  Builds from this shell use /Applications/Xcode.app/Contents/Developer (xcode-select).
+
+  Builds already use it. To keep this engine on it whatever xcode-select says, pin it per build:
+    export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+  or for one command:
+    DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" "/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.sh" ...
+  Start the editor from that shell too; apps opened from Finder or the Launcher don't see it.
+
+  For the version Epic recommends, with xcodes:
+    xcodes install 26.1.1
+  xcodes isn't installed: brew install xcodesorg/made/xcodes (https://github.com/XcodesOrg/xcodes), or the XcodesApp (https://github.com/XcodesOrg/XcodesApp)
+

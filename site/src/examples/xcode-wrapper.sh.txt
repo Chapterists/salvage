@@ -1,0 +1,6 @@
+#!/bin/sh
+# Written by salvage xcode --wrapper; safe to delete.
+# Runs a command with Xcode pinned for Unreal Engine 5.8.4, without changing xcode-select.
+# Example: ./this-script "<engine>/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun ...
+export DEVELOPER_DIR='/Applications/Xcode.app/Contents/Developer'
+exec "$@"

@@ -1,6 +1,7 @@
-Salvage is Chapterists' open-source toolbox: the tools we use to make our stories. This release is the `salvage` command, for Unreal Engine work on macOS, Windows and Linux. It has six jobs:
+Salvage is Chapterists' open-source toolbox: the tools we use to make our stories. This release is the `salvage` command, for Unreal Engine work on macOS, Windows and Linux. It has seven jobs:
 
 - `salvage doctor` checks a machine for the things that make Unreal slow or broken, and says how to fix each one. It runs 12 checks on a Mac and 6 on Windows and Linux.
+- `salvage xcode` judges every installed Xcode against your engine and Epic's own guidance, checks its Metal tools, and shows how to pin the right one per build. It never runs sudo or changes xcode-select, and leaves installing Xcode to [xcodes](https://github.com/XcodesOrg/xcodes).
 - `salvage soundings` reads a memreport or LLM CSV from a game, shows where the memory goes, and measures it against 8, 12 and 16 GB machines. Give it two captures to see what changed.
 - `salvage trim` writes memory tiers for 8, 12 and 16 GB machines into a project's config, with the reason for every value. `--undo` takes them out again.
 - `salvage refit` finds out why a Windows-only plugin won't work on a Mac, lets Mac through its allow lists, rebuilds it, and checks the build really made Mac binaries. Porting code is still up to you.
